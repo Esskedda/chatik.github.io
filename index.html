@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><ellipse cx='32' cy='32' rx='28' ry='30' fill='%23000'/><ellipse cx='32' cy='37' rx='14' ry='16' fill='%23000'/><ellipse cx='24' cy='28' rx='4' ry='6' fill='%23fff'/><ellipse cx='40' cy='28' rx='4' ry='6' fill='%23fff'/></svg>">
-    <title>ПИТБУЛЬЧИКИ</title>
+    <title>ПИТБУЛЬЧИКИ: IOS FIX</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     
     <style>
@@ -123,12 +123,12 @@
         .card-name { font-weight: 500; color: white; font-size: 15px; margin-top: 16px; z-index: 2; }
         .voice-card.speaking .card-avatar { box-shadow: 0 0 30px var(--success-color); border: 2px solid var(--success-color); transform: scale(1.1); }
 
-        /* --- AUDIO SETTINGS PANEL --- */
+        /* --- AUDIO SETTINGS PANEL (PC Only) --- */
         .audio-settings {
             position: absolute; top: 80px; left: 20px; z-index: 150;
             background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(30px);
             border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
-            padding: 20px; width: 300px; display: none; /* Скрыто по умолчанию */
+            padding: 20px; width: 300px; display: none;
         }
         .audio-settings.visible { display: block; }
         .audio-settings h3 { margin: 0 0 15px 0; font-size: 14px; color: #00f260; text-transform: uppercase; }
@@ -189,7 +189,8 @@
             #app-layout { flex-direction: column; padding: 10px; gap: 10px; }
             .stage-area { height: 50vh; flex: none; }
             .chat-panel { width: 100%; flex: 1; padding-bottom: 80px; }
-            .audio-settings { left: 10px; right: 10px; width: auto; }
+            .audio-settings { display: none !important; } /* Скрываем ползунки на телефоне, они там не работают */
+            #btn-settings { display: none; } /* Скрываем кнопку настроек на телефоне */
         }
     </style>
 </head>
@@ -206,29 +207,20 @@
     </div>
 
     <div id="app-layout" class="hidden">
-        <!-- ПАНЕЛЬ НАСТРОЕК АУДИО -->
+        <!-- ПАНЕЛЬ НАСТРОЕК АУДИО (ТОЛЬКО PC) -->
         <div class="audio-settings" id="audio-settings">
-            <h3>🎚️ Шумоподавление</h3>
-            
+            <h3>🎚️ Шумоподавление (PC)</h3>
             <div class="setting-row">
                 <label>Порог срабатывания <span class="value" id="val-threshold">20</span></label>
                 <input type="range" id="slider-threshold" min="5" max="50" value="20" oninput="app.updateThreshold(this.value)">
             </div>
-            
             <div class="setting-row">
                 <label>Низкие частоты (HP) <span class="value" id="val-hp">100 Hz</span></label>
                 <input type="range" id="slider-hp" min="60" max="200" value="100" oninput="app.updateHighPass(this.value)">
             </div>
-            
             <div class="setting-row">
                 <label>Высокие частоты (LP) <span class="value" id="val-lp">4000 Hz</span></label>
                 <input type="range" id="slider-lp" min="3000" max="8000" value="4000" oninput="app.updateLowPass(this.value)">
-            </div>
-
-            <div style="margin-top: 20px; font-size: 10px; color: rgba(255,255,255,0.4); line-height: 1.4;">
-                💡 Порог: чем выше - тем тише должен быть фон<br>
-                💡 HP: убирает гул (кулеры, басы)<br>
-                💡 LP: убирает писк (клавиатура)
             </div>
         </div>
 
@@ -241,12 +233,11 @@
             <div id="grid-users" class="stage-grid"></div>
 
             <div class="bottom-controls">
-                <!-- КНОПКА НАСТРОЕК -->
-                <button class="control-btn" id="btn-settings" onclick="app.toggleSettings()" title="Настройки шумоподавления">
+                <button class="control-btn" id="btn-settings" onclick="app.toggleSettings()" title="Настройки">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
                 </button>
 
-                <button class="control-btn" id="btn-noise" onclick="app.toggleNoiseGate()" title="Noise Gate: Выкл">
+                <button class="control-btn" id="btn-noise" onclick="app.toggleNoiseGate()" title="Noise Gate">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
                 </button>
                 <button class="control-btn" id="btn-mic" onclick="app.toggleMic()" title="Микрофон">
@@ -275,17 +266,33 @@
 
 <script>
 const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
-const ROOM_ID = 'pitbull-ultra-clean-v3';
+const ROOM_ID = 'pitbull-ios-fix-v4';
 const ICE_SERVERS = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] };
 
-// АГРЕССИВНЫЕ НАСТРОЙКИ
-const STUDIO_AUDIO_CONSTRAINTS = {
-    echoCancellation: { ideal: true },
-    autoGainControl: { ideal: true },
-    noiseSuppression: { ideal: true },
-    voiceIsolation: 'preferred',
-    channelCount: 1,
-    sampleRate: 48000  // Более высокое качество = лучше обработка
+// --- ОПРЕДЕЛЕНИЕ IOS ---
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+// --- КОНФИГУРАЦИЯ ---
+// Для iOS критично: echoCancellation: true и отключение лишней обработки
+const IOS_CONSTRAINTS = {
+    audio: {
+        echoCancellation: true, // ОБЯЗАТЕЛЬНО TRUE для разблокировки VoIP
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1
+    },
+    video: false
+};
+
+const PC_CONSTRAINTS = {
+    audio: {
+        echoCancellation: { ideal: true },
+        autoGainControl: { ideal: true },
+        noiseSuppression: { ideal: true },
+        channelCount: 1,
+        sampleRate: 48000
+    },
+    video: false
 };
 
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -319,23 +326,23 @@ class App {
         this.myId = savedId;
         this.myProfile = { name: '', avatar: '' };
         
-        // Audio Processing Nodes
+        // Streams
         this.rawLocalStream = null;     
-        this.processedStream = null;    
+        this.processedStream = null; // Поток, который уходит в сеть
         this.localVideoStream = null;
+        
+        // Processing Nodes
         this.noiseGateEnabled = false; 
-        
-        // === НОВЫЕ УЗЛЫ ОБРАБОТКИ ===
-        this.gateNode = null;           // Gain для Gate
+        this.gateNode = null;
         this.analyser = null;           
-        this.highPassFilter = null;     // Фильтр низких частот
-        this.lowPassFilter = null;      // Фильтр высоких частот
-        this.compressor = null;         // Динамический компрессор
+        this.highPassFilter = null;
+        this.lowPassFilter = null;
+        this.compressor = null;
         
-        // Настройки (можно менять в реальном времени)
-        this.gateThreshold = 20;        // Порог срабатывания Gate (начальное значение)
-        this.highPassFreq = 100;        // Отсечка низких частот
-        this.lowPassFreq = 4000;        // Отсечка высоких частот
+        // Settings
+        this.gateThreshold = 20;
+        this.highPassFreq = 100;
+        this.lowPassFreq = 4000;
 
         this.isMuted = false;
         this.isScreenOn = false;
@@ -394,12 +401,30 @@ class App {
         document.getElementById('app-layout').classList.remove('hidden');
 
         try {
-            this.rawLocalStream = await navigator.mediaDevices.getUserMedia({ audio: STUDIO_AUDIO_CONSTRAINTS });
-            this.setupAudioProcessing();
+            // Выбираем конфиг в зависимости от устройства
+            const constraints = IS_IOS ? IOS_CONSTRAINTS : PC_CONSTRAINTS;
+            console.log("Requesting mic with:", constraints);
+            
+            this.rawLocalStream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            if (IS_IOS) {
+                // !!! IOS BYPASS MODE !!!
+                // Мы НЕ используем WebAudio фильтры для исходящего потока на iOS.
+                // Это позволяет Safari включить нативный VoIP режим.
+                console.log("iOS detected: Bypassing JS audio processing");
+                this.processedStream = this.rawLocalStream;
+                
+                // Создаем анализатор только для визуализации (говорит/молчит)
+                this.setupIOSVisualizer();
+            } else {
+                // PC Mode: Full processing
+                this.setupAudioProcessing();
+            }
+            
             document.getElementById('btn-mic').classList.add('active');
         } catch(e) { 
             console.error(e); 
-            alert("Ошибка микрофона.");
+            alert("Ошибка микрофона: " + e.message);
         }
 
         this.connectMQTT();
@@ -407,139 +432,136 @@ class App {
         this.loadChatHistory();
     }
 
-    // === УЛУЧШЕННАЯ АУДИО ЦЕПЬ ===
+    // === IOS VISUALIZER (Only for green border) ===
+    setupIOSVisualizer() {
+        if(audioContext.state === 'suspended') audioContext.resume();
+        const source = audioContext.createMediaStreamSource(this.rawLocalStream);
+        this.analyser = audioContext.createAnalyser();
+        this.analyser.fftSize = 256;
+        source.connect(this.analyser);
+        // НЕ ПОДКЛЮЧАЕМ К DESTINATION! Просто слушаем.
+        this.processVisualizerLoop();
+    }
+
+    // === PC AUDIO PROCESSING ===
     setupAudioProcessing() {
         if(audioContext.state === 'suspended') audioContext.resume();
-        
         const source = audioContext.createMediaStreamSource(this.rawLocalStream);
         
-        // 1. Анализатор (для VAD и Gate)
         this.analyser = audioContext.createAnalyser();
-        this.analyser.fftSize = 512;  // Увеличили для более точной детекции
+        this.analyser.fftSize = 512;
         this.analyser.smoothingTimeConstant = 0.3;
 
-        // 2. HIGH-PASS фильтр (вырезает басы: кондиционеры, кулеры, гул)
         this.highPassFilter = audioContext.createBiquadFilter();
         this.highPassFilter.type = 'highpass';
         this.highPassFilter.frequency.value = this.highPassFreq;
-        this.highPassFilter.Q.value = 0.7;  // Резкость среза
+        this.highPassFilter.Q.value = 0.7;
 
-        // 3. LOW-PASS фильтр (вырезает высокие частоты: клавиатура, мышь)
         this.lowPassFilter = audioContext.createBiquadFilter();
         this.lowPassFilter.type = 'lowpass';
         this.lowPassFilter.frequency.value = this.lowPassFreq;
         this.lowPassFilter.Q.value = 0.7;
 
-        // 4. КОМПРЕССОР (выравнивает громкость, давит резкие всплески)
         this.compressor = audioContext.createDynamicsCompressor();
-        this.compressor.threshold.value = -30;  // Начинает работать при -30dB
-        this.compressor.knee.value = 20;        // Плавность сжатия
-        this.compressor.ratio.value = 12;       // Сила сжатия (агрессивно)
-        this.compressor.attack.value = 0.003;   // Быстрая реакция
-        this.compressor.release.value = 0.25;   // Плавное отпускание
+        this.compressor.threshold.value = -30;
+        this.compressor.knee.value = 20;
+        this.compressor.ratio.value = 12;
+        this.compressor.attack.value = 0.003;
+        this.compressor.release.value = 0.25;
 
-        // 5. GATE (Управляемый громкостью узел)
         this.gateNode = audioContext.createGain();
         this.gateNode.gain.value = 1.0;
 
-        // 6. Output
         const destination = audioContext.createMediaStreamDestination();
 
-        // === ЦЕПЬ: Source -> HPF -> LPF -> Compressor -> Gate -> Out ===
         source.connect(this.highPassFilter);
         this.highPassFilter.connect(this.lowPassFilter);
         this.lowPassFilter.connect(this.compressor);
         this.compressor.connect(this.gateNode);
         this.gateNode.connect(destination);
-        
-        // Ответвление на анализатор (ДО Gate, чтобы детектить реальный уровень)
         this.compressor.connect(this.analyser);
 
         this.processedStream = destination.stream;
-        this.processAudioLoop();
+        this.processAudioLoopPC();
     }
 
-    processAudioLoop() {
+    processVisualizerLoop() {
         const data = new Uint8Array(this.analyser.frequencyBinCount);
-        
+        const loop = () => {
+            if (!this.analyser) return;
+            this.analyser.getByteFrequencyData(data);
+            let sum = 0;
+            for(let i=0; i<data.length; i++) sum+=data[i];
+            const avg = sum/data.length;
+
+            const myCard = document.querySelector(`.voice-card[data-uid="${this.myId}"]`);
+            if(myCard) {
+                if (avg > 10 && !this.isMuted) myCard.classList.add('speaking');
+                else myCard.classList.remove('speaking');
+            }
+            requestAnimationFrame(loop);
+        };
+        loop();
+    }
+
+    processAudioLoopPC() {
+        const data = new Uint8Array(this.analyser.frequencyBinCount);
         const loop = () => {
             if (!this.analyser) return;
             this.analyser.getByteFrequencyData(data);
             
-            // Считаем среднюю энергию в РЕЧЕВОМ диапазоне (бины 5-80 ~ 300-3000Hz)
             let sum = 0;
             const startBin = 5;
             const endBin = Math.min(80, data.length);
             for(let i = startBin; i < endBin; i++) sum += data[i];
             const avg = sum / (endBin - startBin);
 
-            // Визуализация (зеленая обводка)
             const myCard = document.querySelector(`.voice-card[data-uid="${this.myId}"]`);
             if(myCard) {
                 if (avg > 12 && !this.isMuted) myCard.classList.add('speaking');
                 else myCard.classList.remove('speaking');
             }
 
-            // === GATE LOGIC ===
             if (this.noiseGateEnabled && !this.isMuted) {
-                if (avg > this.gateThreshold) {
-                    // Голос обнаружен -> открываем БЫСТРО
-                    this.gateNode.gain.setTargetAtTime(1.0, audioContext.currentTime, 0.02);
-                } else {
-                    // Тишина -> закрываем ПЛАВНО (чтобы не было кваканья)
-                    this.gateNode.gain.setTargetAtTime(0.0, audioContext.currentTime, 0.15);
-                }
+                if (avg > this.gateThreshold) this.gateNode.gain.setTargetAtTime(1.0, audioContext.currentTime, 0.02);
+                else this.gateNode.gain.setTargetAtTime(0.0, audioContext.currentTime, 0.15);
             } else if (!this.isMuted) {
-                // Gate выключен - держим канал открытым
                 this.gateNode.gain.setTargetAtTime(1.0, audioContext.currentTime, 0.1);
             } else {
-                // Muted
                 this.gateNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.05);
             }
-
             requestAnimationFrame(loop);
         };
         loop();
     }
 
-    // === УПРАВЛЕНИЕ НАСТРОЙКАМИ В РЕАЛЬНОМ ВРЕМЕНИ ===
-    updateThreshold(val) {
-        this.gateThreshold = parseInt(val);
-        document.getElementById('val-threshold').innerText = val;
-    }
-    updateHighPass(val) {
-        this.highPassFreq = parseInt(val);
-        if(this.highPassFilter) this.highPassFilter.frequency.value = this.highPassFreq;
-        document.getElementById('val-hp').innerText = val + ' Hz';
-    }
-    updateLowPass(val) {
-        this.lowPassFreq = parseInt(val);
-        if(this.lowPassFilter) this.lowPassFilter.frequency.value = this.lowPassFreq;
-        document.getElementById('val-lp').innerText = val + ' Hz';
-    }
-
-    toggleSettings() {
-        const panel = document.getElementById('audio-settings');
-        panel.classList.toggle('visible');
-    }
+    // === SETTINGS (PC Only) ===
+    updateThreshold(val) { this.gateThreshold = parseInt(val); document.getElementById('val-threshold').innerText = val; }
+    updateHighPass(val) { this.highPassFreq = parseInt(val); if(this.highPassFilter) this.highPassFilter.frequency.value = this.highPassFreq; document.getElementById('val-hp').innerText = val + ' Hz'; }
+    updateLowPass(val) { this.lowPassFreq = parseInt(val); if(this.lowPassFilter) this.lowPassFilter.frequency.value = this.lowPassFreq; document.getElementById('val-lp').innerText = val + ' Hz'; }
+    toggleSettings() { document.getElementById('audio-settings').classList.toggle('visible'); }
 
     toggleNoiseGate() {
         this.noiseGateEnabled = !this.noiseGateEnabled;
         const btn = document.getElementById('btn-noise');
         if (this.noiseGateEnabled) {
             btn.classList.add('active');
-            btn.title = "Noise Gate: ВКЛ";
-            playSound(600);
+            // На iOS это не включит программный гейт, но мы можем использовать этот стейт визуально
+            if(IS_IOS) alert("На iPhone шумоподавление управляется системой! Свайпните шторку вниз.");
         } else {
             btn.classList.remove('active');
-            btn.title = "Noise Gate: ВЫКЛ";
-            playSound(400);
         }
     }
 
     toggleMic() {
         this.isMuted = !this.isMuted;
         const btn = document.getElementById('btn-mic');
+        
+        // Для iOS физически выключаем трек, чтобы система знала статус
+        if(IS_IOS && this.rawLocalStream) {
+            this.rawLocalStream.getAudioTracks()[0].enabled = !this.isMuted;
+        }
+
         if (this.isMuted) {
             btn.classList.remove('active');
             btn.classList.add('muted');
@@ -555,7 +577,10 @@ class App {
         const pc = new RTCPeerConnection(ICE_SERVERS);
         this.peers[targetId] = pc;
 
-        if(this.processedStream) this.processedStream.getTracks().forEach(t => pc.addTrack(t, this.processedStream));
+        // Отправляем правильный поток (чистый на iOS, обработанный на PC)
+        const streamToSend = this.processedStream || this.rawLocalStream;
+        if(streamToSend) streamToSend.getTracks().forEach(t => pc.addTrack(t, streamToSend));
+        
         if(this.localVideoStream) this.localVideoStream.getTracks().forEach(t => pc.addTrack(t, this.localVideoStream));
 
         pc.onicecandidate = e => { if(e.candidate) this.sendSig(targetId, { type: 'candidate', candidate: e.candidate }); };
@@ -566,7 +591,7 @@ class App {
                 const aud = new Audio();
                 aud.srcObject = stream;
                 aud.autoplay = true;
-                aud.playsInline = true;
+                aud.playsInline = true; // Критично для iOS
                 document.body.appendChild(aud);
             } else if(e.track.kind === 'video') {
                 this.attachVideoToCard(targetId, stream);
