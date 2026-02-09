@@ -3,293 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Voice Room (Serverless)</title>
-    <!-- Подключаем библиотеку Trystero для связи без сервера -->
-    <script src="https://unpkg.com/trystero/dist/trystero-torrent.min.js"></script>
+    <title>Voice Room 2.0</title>
+    <!-- Используем Trystero Torrent (самый стабильный для P2P) -->
+    <script src="https://unpkg.com/trystero@0.17.0/dist/trystero-torrent.min.js"></script>
     
     <style>
-        :root { --bg: #36393f; --dark: #2f3136; --darker: #202225; --accent: #5865f2; --text: #dcddde; --red: #ed4245; }
+        :root { --bg: #202225; --dark: #2f3136; --accent: #5865f2; --text: #fff; }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; }
         
-        /* Логин */
-        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--darker); display: flex; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(5px); }
-        .login-box { background: var(--dark); padding: 25px; border-radius: 12px; width: 90%; max-width: 320px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .login-box h2 { text-align: center; margin: 0; color: white; }
-        input { background: var(--darker); border: 1px solid #222; padding: 12px; color: white; border-radius: 6px; outline: none; font-size: 16px; transition: 0.2s; }
-        input:focus { border-color: var(--accent); }
-        button.btn-primary { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.2s; }
-        button.btn-primary:active { transform: scale(0.98); }
-        
-        /* Хедер */
-        header { background: var(--darker); padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; box-shadow: 0 1px 5px rgba(0,0,0,0.2); }
-        .status-badge { font-size: 12px; background: #222; padding: 4px 8px; border-radius: 10px; color: #aaa; }
-        .status-badge.online { color: #43b581; background: rgba(67, 181, 129, 0.1); }
+        /* ЭКРАН ВХОДА */
+        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        .login-box { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 15px; }
+        input { background: var(--dark); border: 1px solid #000; padding: 15px; color: white; border-radius: 5px; font-size: 16px; outline: none; }
+        button { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        button:active { opacity: 0.8; }
 
-        /* Сетка юзеров */
-        #users-grid { flex: 1; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; align-content: start; overflow-y: auto; }
+        /* ИНТЕРФЕЙС */
+        header { padding: 15px; background: var(--dark); border-bottom: 1px solid #000; display: flex; justify-content: space-between; align-items: center; }
+        #status { font-size: 12px; color: #aaa; }
         
-        /* Карточка */
-        .user-card { background: var(--dark); border-radius: 12px; padding: 15px; display: flex; flex-direction: column; align-items: center; position: relative; transition: 0.2s; animation: popIn 0.3s ease; }
-        @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        #grid { flex: 1; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; align-content: start; overflow-y: auto; }
         
-        .avatar-wrapper { position: relative; width: 70px; height: 70px; }
-        .avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #444; border: 3px solid var(--dark); transition: border-color 0.1s; }
-        
-        /* Индикаторы */
-        .talking .avatar { border-color: #3ba55c; box-shadow: 0 0 15px rgba(59, 165, 92, 0.5); }
-        .is-muted::after { content: '🔇'; position: absolute; bottom: 0; right: 0; background: var(--darker); border-radius: 50%; padding: 4px; font-size: 14px; border: 2px solid var(--dark); }
-        
-        .user-name { margin-top: 10px; font-size: 14px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; color: white; }
+        .user { background: var(--dark); padding: 15px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; position: relative; }
+        .avatar { width: 60px; height: 60px; border-radius: 50%; background: #444; object-fit: cover; border: 3px solid transparent; transition: 0.2s; }
+        .talking { border-color: #3ba55c; box-shadow: 0 0 10px #3ba55c; }
+        .muted-icon { position: absolute; top: 10px; right: 10px; font-size: 14px; background: rgba(0,0,0,0.5); padding: 2px; border-radius: 50%; display: none; }
+        .is-muted .muted-icon { display: block; }
+        .name { margin-top: 10px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
-        /* Контролы */
-        .controls { background: var(--darker); padding: 20px; display: flex; justify-content: center; gap: 25px; border-top: 1px solid #222; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
-        .btn-round { width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 24px; color: white; background: var(--dark); box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: 0.2s; }
-        .btn-round:active { transform: scale(0.95); }
-        .btn-mute.active { background: var(--red); color: white; }
-        .btn-exit { background: #222; }
+        /* ПАНЕЛЬ УПРАВЛЕНИЯ */
+        .controls { padding: 20px; background: var(--dark); display: flex; justify-content: center; gap: 20px; border-top: 1px solid #000; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+        .btn-circle { width: 60px; height: 60px; border-radius: 50%; border: none; background: #40444b; color: white; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-circle.red { background: #ed4245; }
+        .btn-circle.green { background: #3ba55c; }
     </style>
 </head>
 <body>
 
-    <!-- ВХОД -->
     <div id="login-screen">
+        <h2 style="margin-bottom: 20px;">🔊 Вход в комнату</h2>
         <div class="login-box">
-            <h2>🎧 Вход</h2>
-            <div style="font-size: 12px; color: #aaa; text-align: center;">Работает без сервера (P2P)</div>
-            <input type="password" id="input-key" placeholder="Придумайте сложный ключ">
-            <input type="text" id="input-name" placeholder="Ваше имя">
-            <input type="text" id="input-photo" placeholder="Ссылка на фото (или пусто)">
-            <button class="btn-primary" onclick="startApp()">Подключиться</button>
+            <input type="text" id="key" placeholder="Ключ комнаты (пароль)">
+            <input type="text" id="nick" placeholder="Ваше имя">
+            <button onclick="join()">Подключиться</button>
         </div>
+        <p style="color:#777; font-size:12px; margin-top:20px; text-align:center;">
+            Все, кто введут один ключ,<br>попадут в одну голосовую связь.
+        </p>
     </div>
 
-    <!-- ИНТЕРФЕЙС -->
     <header>
-        <div style="font-weight: bold; display: flex; align-items: center; gap: 10px;">
-            <span>Voice Room</span>
-        </div>
-        <div id="connection-status" class="status-badge">Ожидание...</div>
+        <div style="font-weight: bold;">Voice Chat</div>
+        <div id="status">Оффлайн</div>
     </header>
 
-    <div id="users-grid"></div>
+    <div id="grid"></div>
 
     <div class="controls">
-        <button class="btn-round btn-mute" id="mute-btn" onclick="toggleMute()">🎤</button>
-        <button class="btn-round btn-exit" onclick="logout()">🚪</button>
+        <button id="mic-btn" class="btn-circle" onclick="toggleMic()">🎤</button>
+        <button class="btn-circle red" onclick="location.reload()">🚪</button>
     </div>
 
     <script>
-        // === КОНФИГУРАЦИЯ ===
-        const APP_ID = 'my-discord-clone-v1'; // Уникальный ID приложения в сети торрентов
-        let room, sendData, localStream;
-        let myUser = {};
-        const peers = {}; // Храним данные о пирах { peerId: { name, photo, muted } }
+        let room, sendMeta, localStream;
+        let myId = Math.random().toString(36).substr(2, 9);
+        let peers = {};
 
-        // STUN сервера для РФ (чтобы пробивать NAT)
+        // Настройки STUN (обязательно для РФ)
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun.sipnet.ru:3478' }
+                { urls: 'stun:stun.sipnet.ru:3478' } // Российский сервер
             ]
         };
 
-        // Загрузка сохраненных данных
+        // Загрузка данных
         window.onload = () => {
-            const stored = JSON.parse(localStorage.getItem('discord_lite_session'));
-            if (stored) {
-                document.getElementById('input-key').value = stored.key;
-                document.getElementById('input-name').value = stored.name;
-                document.getElementById('input-photo').value = stored.photo || '';
-            }
+            if(localStorage.getItem('vchat_key')) document.getElementById('key').value = localStorage.getItem('vchat_key');
+            if(localStorage.getItem('vchat_nick')) document.getElementById('nick').value = localStorage.getItem('vchat_nick');
         };
 
-        async function startApp() {
-            const key = document.getElementById('input-key').value.trim();
-            const name = document.getElementById('input-name').value.trim();
-            let photo = document.getElementById('input-photo').value.trim();
+        async function join() {
+            const key = document.getElementById('key').value.trim();
+            const nick = document.getElementById('nick').value.trim();
             
-            if (!key || !name) return alert('Введите ключ комнаты и имя!');
-            if (!photo) photo = `https://ui-avatars.com/api/?name=${name}&background=random&color=fff`;
+            if(!key || !nick) return alert('Введите ключ и имя!');
 
-            // Сохраняем сессию
-            myUser = { key, name, photo, isMuted: false };
-            localStorage.setItem('discord_lite_session', JSON.stringify(myUser));
+            localStorage.setItem('vchat_key', key);
+            localStorage.setItem('vchat_nick', nick);
 
             try {
-                // 1. Получаем доступ к микрофону
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                
-                // 2. Скрываем логин
+                // 1. Микрофон
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 document.getElementById('login-screen').style.display = 'none';
-                
-                // 3. Создаем свою карточку
-                renderUser('local', myUser);
-                setupAudioVisualizer(localStream, 'local');
-                
-                // 4. Инициализируем Trystero (P2P магия)
-                initTrystero(key);
 
-            } catch (err) {
-                console.error(err);
-                alert('Ошибка: Не удалось получить доступ к микрофону. Проверьте разрешения и HTTPS.');
+                // 2. Инициализация (ВАЖНО: Ключ = AppID)
+                // Мы используем ключ прямо как ID приложения, чтобы создать уникальную "вселенную" для комнаты
+                const appId = 'vchat_ru_' + key.replace(/[^a-zA-Z0-9]/g, ''); 
+                
+                initRoom(appId, nick);
+                
+                // Рендер себя
+                renderUser(myId, nick, true);
+                monitorAudio(localStream, myId);
+
+            } catch(e) {
+                alert('Ошибка микрофона: ' + e.message);
             }
         }
 
-        function initTrystero(roomId) {
-            const connectionStatus = document.getElementById('connection-status');
-            connectionStatus.innerText = 'Поиск пиров...';
+        function initRoom(appId, nick) {
+            document.getElementById('status').innerText = 'Поиск пиров...';
+            
+            // Заходим в "лобби" с этим ID
+            room = Trystero.joinRoom({ appId: appId, rtcConfig }, 'lobby');
 
-            // Присоединяемся к комнате (используем Torrent трекеры как сигналинг)
-            room = Trystero.joinRoom({ appId: APP_ID, rtcConfig }, roomId);
+            // Обмен данными (имя, статус мута)
+            const [send, get] = room.makeAction('meta');
+            sendMeta = send;
 
-            // Канал для обмена данными (имя, фото, статус мута)
-            const [sendDataAction, getDataAction] = room.makeAction('user-info');
-            sendData = sendDataAction;
-
-            // === СОБЫТИЯ ===
-
-            // 1. Кто-то вошел
-            room.onPeerJoin(peerId => {
-                console.log('Peer joined:', peerId);
-                connectionStatus.innerText = 'Онлайн';
-                connectionStatus.classList.add('online');
-                // Отправляем ему свои данные сразу
-                sendData({ id: 'local', ...myUser }, peerId);
+            // --- СОБЫТИЯ ---
+            
+            room.onPeerJoin(id => {
+                console.log('Кто-то зашел:', id);
+                document.getElementById('status').innerText = 'Подключено';
+                // Отправляем новичку свое имя и статус сразу
+                send({ name: nick, muted: !localStream.getAudioTracks()[0].enabled }, id);
             });
 
-            // 2. Кто-то вышел
-            room.onPeerLeave(peerId => {
-                document.getElementById(`user-${peerId}`)?.remove();
-                delete peers[peerId];
+            room.onPeerLeave(id => {
+                document.getElementById('user-'+id)?.remove();
             });
 
-            // 3. Пришел аудио-поток
-            room.onPeerStream((stream, peerId) => {
-                // Создаем аудио элемент
-                let audio = new Audio();
+            room.onPeerStream((stream, id) => {
+                // Создаем звук
+                const audio = new Audio();
                 audio.srcObject = stream;
                 audio.autoplay = true;
-                audio.playsInline = true; // Для iOS
+                audio.playsInline = true;
                 document.body.appendChild(audio);
 
-                // Если карточки еще нет (поток пришел раньше данных), создаем заглушку
-                if (!document.getElementById(`user-${peerId}`)) {
-                    renderUser(peerId, { name: 'Подключение...', photo: 'https://via.placeholder.com/70' });
+                // Если юзера еще нет в UI (поток пришел раньше имени)
+                if(!document.getElementById('user-'+id)) {
+                    renderUser(id, 'Подключение...', false);
                 }
-                
-                setupAudioVisualizer(stream, peerId);
+                monitorAudio(stream, id);
             });
 
-            // 4. Пришли данные (имя, фото, мут)
-            getDataAction((data, peerId) => {
-                // Если это обновление статуса мута
-                if (data.type === 'mute-status') {
-                    toggleUserMuteUI(peerId, data.isMuted);
-                    return;
+            get((data, id) => {
+                // Обновляем имя или статус мута
+                if(!document.getElementById('user-'+id)) {
+                    renderUser(id, data.name, false);
                 }
-
-                // Иначе это профиль пользователя
-                peers[peerId] = data;
-                renderUser(peerId, data);
+                updateMuteStatus(id, data.muted);
+                // Обновляем имя, если пришло
+                if(data.name) document.querySelector(`#user-${id} .name`).innerText = data.name;
             });
 
-            // Добавляем свой поток в комнату (чтобы нас слышали)
+            // Добавляем свой поток
             room.addStream(localStream);
         }
 
-        // === UI ФУНКЦИИ ===
-
-        function renderUser(id, data) {
-            let card = document.getElementById(`user-${id}`);
-            if (!card) {
-                card = document.createElement('div');
-                card.id = `user-${id}`;
-                card.className = 'user-card';
-                document.getElementById('users-grid').appendChild(card);
-            }
+        // --- UI ---
+        function renderUser(id, name, isLocal) {
+            if(document.getElementById('user-'+id)) return;
             
-            // Если id='local', добавляем метку (Вы)
-            const nameDisplay = id === 'local' ? `${data.name} (Вы)` : data.name;
-
-            card.innerHTML = `
-                <div class="avatar-wrapper ${data.isMuted ? 'is-muted' : ''}">
-                    <img src="${data.photo}" class="avatar">
-                </div>
-                <div class="user-name">${nameDisplay}</div>
+            const div = document.createElement('div');
+            div.id = 'user-'+id;
+            div.className = 'user ' + (isLocal ? 'local' : '');
+            
+            // Генерируем аватар по имени
+            const ava = `https://ui-avatars.com/api/?name=${name}&background=random&color=fff&bold=true`;
+            
+            div.innerHTML = `
+                <div class="muted-icon">🔇</div>
+                <img src="${ava}" class="avatar">
+                <div class="name">${name} ${isLocal ? '(Вы)' : ''}</div>
             `;
+            document.getElementById('grid').appendChild(div);
         }
 
-        function toggleMute() {
+        function toggleMic() {
             const track = localStream.getAudioTracks()[0];
-            const isMuted = track.enabled; // Сейчас включен?
-            track.enabled = !isMuted; // Переключаем
-
-            myUser.isMuted = !track.enabled;
-
-            // Обновляем кнопку
-            const btn = document.getElementById('mute-btn');
-            const myAvatar = document.querySelector('#user-local .avatar-wrapper');
+            track.enabled = !track.enabled;
             
-            if (myUser.isMuted) {
-                btn.classList.add('active');
-                btn.innerText = '🔇';
-                myAvatar.classList.add('is-muted');
-            } else {
-                btn.classList.remove('active');
+            const btn = document.getElementById('mic-btn');
+            const myNode = document.getElementById('user-'+myId);
+            
+            if(track.enabled) {
+                btn.classList.remove('red');
                 btn.innerText = '🎤';
-                myAvatar.classList.remove('is-muted');
+                myNode.classList.remove('is-muted');
+            } else {
+                btn.classList.add('red');
+                btn.innerText = '🔇';
+                myNode.classList.add('is-muted');
             }
 
-            // Рассылаем всем новый статус
-            if (sendData) {
-                sendData({ type: 'mute-status', isMuted: myUser.isMuted });
+            // Шлем всем новый статус
+            if(sendMeta) sendMeta({ muted: !track.enabled });
+        }
+
+        function updateMuteStatus(id, isMuted) {
+            const node = document.getElementById('user-'+id);
+            if(node) {
+                if(isMuted) node.classList.add('is-muted');
+                else node.classList.remove('is-muted');
             }
         }
 
-        function toggleUserMuteUI(peerId, isMuted) {
-            const card = document.getElementById(`user-${peerId}`);
-            if (card) {
-                const wrapper = card.querySelector('.avatar-wrapper');
-                if (isMuted) wrapper.classList.add('is-muted');
-                else wrapper.classList.remove('is-muted');
-            }
-        }
-
-        function logout() {
-            if (confirm('Выйти из комнаты?')) {
-                localStorage.removeItem('discord_lite_session');
-                location.reload();
-            }
-        }
-
-        // === ВИЗУАЛИЗАЦИЯ ГОЛОСА ===
-        function setupAudioVisualizer(stream, elementId) {
+        // Визуализатор
+        function monitorAudio(stream, id) {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const src = ctx.createMediaStreamSource(stream);
-            const analyser = ctx.createAnalyser();
-            analyser.fftSize = 64;
-            src.connect(analyser);
+            const analyzer = ctx.createAnalyser();
+            analyzer.fftSize = 32;
+            src.connect(analyzer);
             
-            const data = new Uint8Array(analyser.frequencyBinCount);
+            const data = new Uint8Array(analyzer.frequencyBinCount);
             
-            function draw() {
-                // Если элемент удален (юзер вышел), останавливаем анимацию
-                const card = document.getElementById(`user-${elementId}`);
-                if (!card) return;
-
-                analyser.getByteFrequencyData(data);
-                // Считаем среднюю громкость
-                let sum = 0;
-                for(let i=0; i < data.length; i++) sum += data[i];
-                const avg = sum / data.length;
-
-                if (avg > 10) card.classList.add('talking');
-                else card.classList.remove('talking');
-
-                requestAnimationFrame(draw);
-            }
-            draw();
+            const loop = () => {
+                const node = document.getElementById('user-'+id);
+                if(!node) return; // Юзер вышел
+                
+                analyzer.getByteFrequencyData(data);
+                // Средняя громкость
+                const vol = data.reduce((a,b)=>a+b) / data.length;
+                
+                const ava = node.querySelector('.avatar');
+                if(vol > 20) ava.classList.add('talking');
+                else ava.classList.remove('talking');
+                
+                requestAnimationFrame(loop);
+            };
+            loop();
         }
     </script>
 </body>
