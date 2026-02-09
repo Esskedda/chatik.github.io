@@ -3,257 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeonLobby</title>
-    <!-- Подключаем MQTT и Google Fonts -->
+    <title>NetLobby Pro</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --glass-bg: rgba(20, 20, 30, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-blur: 20px;
-            --accent: #6366f1; /* Indigo */
-            --accent-glow: rgba(99, 102, 241, 0.5);
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
+            /* Palette: Zinc-like colors */
+            --bg-app: #09090b;       /* Black-ish */
+            --bg-sidebar: #18181b;   /* Dark Gray */
+            --bg-element: #27272a;   /* Element Gray */
+            --bg-hover: #3f3f46;     /* Lighter Gray */
+            
+            --border: #27272a;       /* Subtle border */
+            --border-highlight: #52525b;
+            
+            --accent: #3b82f6;       /* Solid Blue */
+            --accent-hover: #2563eb;
+            
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            
             --success: #10b981;
             --danger: #ef4444;
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
         }
 
         * { box-sizing: border-box; outline: none; }
         
         body, html { 
             margin: 0; padding: 0; height: 100%; 
-            font-family: 'Inter', sans-serif; 
-            background: var(--bg-gradient);
-            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-app);
+            color: var(--text-main);
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
-
-        /* --- Animations --- */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse-speak { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
 
         .hidden { display: none !important; }
 
-        /* --- Utility: Glass Effect --- */
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(var(--glass-blur));
-            -webkit-backdrop-filter: blur(var(--glass-blur));
-            border: 1px solid var(--glass-border);
-        }
-
-        /* --- Login Screen --- */
-        #login-screen {
-            display: flex; height: 100vh; align-items: center; justify-content: center;
-            background: radial-gradient(circle at 50% 50%, #2e2a5b 0%, #0f172a 100%);
-        }
-        .login-card {
-            width: 360px; padding: 40px; border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            text-align: center;
-            animation: fadeIn 0.6s ease-out;
-        }
-        .avatar-uploader {
-            width: 100px; height: 100px; margin: 0 auto 20px;
-            border-radius: 50%; border: 3px solid var(--glass-border);
-            background-size: cover; background-position: center; background-color: #1f2937;
-            cursor: pointer; transition: all 0.3s; position: relative;
-        }
-        .avatar-uploader:hover { border-color: var(--accent); transform: scale(1.05); }
-        .avatar-uploader::after {
-            content: '+'; position: absolute; bottom: 0; right: 0;
-            background: var(--accent); color: white; width: 28px; height: 28px;
-            border-radius: 50%; line-height: 28px; font-weight: bold;
-        }
-        
-        input[type="text"] {
-            width: 100%; padding: 14px; margin-bottom: 20px;
-            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
-            border-radius: 12px; color: white; font-size: 1rem; text-align: center;
-            transition: 0.3s;
-        }
-        input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-        
+        /* --- UI COMPONENTS --- */
         .btn {
-            width: 100%; padding: 14px; border: none; border-radius: 12px;
-            font-weight: 600; font-size: 1rem; cursor: pointer; transition: 0.3s;
-            background: var(--accent); color: white;
-        }
-        .btn:hover { background: #4f46e5; box-shadow: 0 0 20px var(--accent-glow); transform: translateY(-1px); }
-
-        /* --- Main App Layout --- */
-        #app-screen { display: flex; height: 100vh; opacity: 0; transition: opacity 0.5s; }
-        #app-screen.visible { opacity: 1; }
-
-        /* Sidebar */
-        #sidebar {
-            width: 280px; display: flex; flex-direction: column; z-index: 10;
-            border-right: 1px solid var(--glass-border);
-        }
-        .app-header {
-            padding: 20px; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.5px;
-            background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--glass-border);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .logout-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; }
-        .logout-btn:hover { color: var(--danger); }
-
-        #user-list { flex: 1; overflow-y: auto; padding: 15px; }
-        .user-item {
-            display: flex; align-items: center; padding: 10px; 
-            border-radius: 12px; margin-bottom: 5px; transition: 0.2s;
-        }
-        .user-item:hover { background: rgba(255,255,255,0.05); }
-        .u-avatar {
-            width: 42px; height: 42px; border-radius: 50%; margin-right: 12px;
-            background-size: cover; background-color: #374151; border: 2px solid transparent;
+            background: var(--text-main); color: var(--bg-app);
+            border: none; padding: 10px 20px; border-radius: 6px;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer;
             transition: all 0.2s;
         }
-        /* Анимация говорения */
-        .is-speaking .u-avatar {
-            border-color: var(--success);
-            animation: pulse-speak 1.5s infinite;
+        .btn:hover { background: #e4e4e7; transform: translateY(-1px); }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        input[type="text"] {
+            background: var(--bg-app); border: 1px solid var(--border-highlight);
+            color: white; padding: 12px; border-radius: 6px; font-size: 0.95rem;
+            transition: border 0.2s;
+        }
+        input[type="text"]:focus { border-color: var(--accent); }
+
+        /* --- LOGIN SCREEN --- */
+        #login-screen {
+            display: flex; height: 100vh; align-items: center; justify-content: center;
+            background: var(--bg-app);
+        }
+        .login-card {
+            width: 320px; padding: 30px; 
+            border: 1px solid var(--border); border-radius: 12px;
+            background: var(--bg-sidebar);
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .avatar-uploader {
+            width: 80px; height: 80px; margin: 0 auto 10px;
+            border-radius: 50%; background-color: var(--bg-element);
+            background-size: cover; background-position: center;
+            cursor: pointer; border: 2px solid var(--border);
+            transition: border-color 0.2s;
+        }
+        .avatar-uploader:hover { border-color: var(--accent); }
+        
+        /* --- APP LAYOUT --- */
+        #app-screen { display: flex; height: 100vh; }
+
+        /* SIDEBAR */
+        #sidebar {
+            width: 260px; background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+        }
+        .sidebar-header {
+            height: 60px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; border-bottom: 1px solid var(--border);
+            font-weight: 700; font-size: 0.95rem; letter-spacing: 0.5px;
+        }
+        .logout-link { font-size: 0.75rem; color: var(--text-muted); cursor: pointer; text-decoration: underline; }
+
+        #user-list { flex: 1; overflow-y: auto; padding: 12px; }
+        .user-item {
+            display: flex; align-items: center; padding: 8px 10px;
+            border-radius: 6px; margin-bottom: 4px; cursor: default;
+        }
+        .user-item:hover { background: var(--bg-element); }
+        .u-avatar {
+            width: 32px; height: 32px; border-radius: 6px; /* Squircle */
+            background-color: var(--bg-element); background-size: cover;
+            margin-right: 10px; position: relative;
+            border: 2px solid transparent; transition: border-color 0.1s;
         }
         
-        .u-info { display: flex; flex-direction: column; }
-        .u-name { font-weight: 600; font-size: 0.95rem; }
-        .u-status { font-size: 0.75rem; color: var(--text-secondary); }
+        /* VAD: Green Border when speaking */
+        .is-speaking .u-avatar { border-color: var(--success); }
 
-        /* Voice Panel */
-        .voice-panel {
-            padding: 20px; background: rgba(0,0,0,0.3);
-            border-top: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: space-between;
+        .u-name { font-size: 0.9rem; font-weight: 500; }
+        .u-status { width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-left: auto; }
+
+        /* VOICE CONTROLS (Fixed bottom) */
+        .voice-controls {
+            padding: 16px; border-top: 1px solid var(--border);
+            background: var(--bg-sidebar);
+            display: flex; align-items: center; justify-content: space-between;
         }
         .mic-btn {
-            width: 48px; height: 48px; border-radius: 50%; border: none;
-            background: rgba(255,255,255,0.1); color: white; font-size: 1.2rem; cursor: pointer; transition: 0.3s;
-            display: flex; align-items: center; justify-content: center;
+            width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--bg-element); color: var(--text-main); font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .mic-btn:hover { background: rgba(255,255,255,0.2); }
-        .mic-btn.active { background: var(--success); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
-        .mic-btn.muted { background: var(--danger); position: relative; }
-        .mic-btn.muted::after { content: ''; width: 2px; height: 24px; background: white; position: absolute; transform: rotate(45deg); }
+        .mic-btn:hover { background: var(--bg-hover); }
+        .mic-btn.active { background: rgba(16, 185, 129, 0.1); border-color: var(--success); color: var(--success); }
+        .mic-btn.muted { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); color: var(--danger); }
 
-        /* Chat Area */
-        #chat-area { flex: 1; display: flex; flex-direction: column; position: relative; background: rgba(0,0,0,0.2); }
+        /* CHAT AREA */
+        #chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-app); position: relative; }
+        
         #messages {
-            flex: 1; overflow-y: auto; padding: 25px; display: flex; flex-direction: column; gap: 15px;
-            scroll-behavior: smooth;
+            flex: 1; overflow-y: auto; padding: 20px 20px 0 20px;
+            display: flex; flex-direction: column; gap: 4px; /* Tight grouping like Discord */
         }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
-        .msg { display: flex; align-items: flex-start; animation: fadeIn 0.3s ease; max-width: 80%; }
-        .msg.mine { align-self: flex-end; flex-direction: row-reverse; }
         
-        .msg-ava { width: 36px; height: 36px; border-radius: 50%; background-size: cover; margin: 0 12px; flex-shrink: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .msg { display: flex; margin-bottom: 12px; }
+        .msg:hover { background: rgba(255,255,255,0.02); margin: -4px -20px 12px -20px; padding: 4px 20px; } /* Hover effect like Discord */
         
-        .msg-bubble {
-            background: rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 18px;
-            border-top-left-radius: 4px; color: var(--text-primary); line-height: 1.5;
-            position: relative; border: 1px solid var(--glass-border);
-        }
-        .msg.mine .msg-bubble {
-            background: var(--accent); border-top-left-radius: 18px; border-top-right-radius: 4px;
-            box-shadow: 0 4px 15px var(--accent-glow); border: none;
-        }
-        .msg-meta { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px; display: block; }
-        .msg.mine .msg-meta { text-align: right; color: rgba(255,255,255,0.7); }
+        .msg-left { width: 40px; margin-right: 12px; flex-shrink: 0; }
+        .msg-ava { width: 40px; height: 40px; border-radius: 50%; background-size: cover; background-color: var(--bg-element); }
+        
+        .msg-right { flex: 1; min-width: 0; }
+        .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+        .msg-name { font-weight: 600; font-size: 0.95rem; color: white; }
+        .msg-time { font-size: 0.75rem; color: var(--text-muted); }
+        .msg-content { color: #dcddde; line-height: 1.5; font-size: 0.95rem; word-wrap: break-word; }
 
-        /* Input Area */
-        .chat-input-wrap { padding: 20px; }
-        .chat-form {
-            background: rgba(0,0,0,0.4); border-radius: 16px; padding: 8px 8px 8px 20px;
-            display: flex; align-items: center; border: 1px solid var(--glass-border);
-            transition: 0.3s;
+        /* INPUT AREA */
+        .input-area { padding: 20px; }
+        .input-wrapper {
+            background: var(--bg-element); border-radius: 8px;
+            padding: 0 16px; display: flex; align-items: center;
         }
-        .chat-form:focus-within { border-color: var(--accent); box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
-        .chat-input { background: transparent; border: none; color: white; width: 100%; font-size: 1rem; }
-        .send-btn {
-            background: rgba(255,255,255,0.1); border: none; border-radius: 10px;
-            width: 40px; height: 40px; color: white; cursor: pointer; transition: 0.2s;
+        #chat-input {
+            width: 100%; border: none; background: transparent;
+            padding: 14px 0; color: var(--text-main); font-size: 0.95rem;
         }
-        .send-btn:hover { background: var(--accent); }
+        #chat-input:focus { border: none; }
 
         /* Diagnostics */
-        #status-pill {
-            position: absolute; top: 15px; right: 20px;
-            background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 20px;
-            font-size: 0.75rem; color: var(--success); font-family: monospace;
-            border: 1px solid var(--glass-border); pointer-events: none;
-        }
+        #diag { position: absolute; top: 10px; right: 10px; font-family: monospace; font-size: 10px; color: var(--bg-hover); pointer-events: none; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 10px; background: var(--bg-sidebar); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-element); border-radius: 5px; border: 2px solid var(--bg-sidebar); }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
+    <!-- LOGIN -->
     <div id="login-screen">
-        <div class="login-card glass">
-            <h1 style="margin: 0 0 10px 0; font-weight: 800;">NEON<span style="color:var(--accent)">LOBBY</span></h1>
-            <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">Voice & Chat Space</p>
-            
+        <div class="login-card">
+            <h2 style="margin: 0; font-size: 1.2rem; text-align: center;">NetLobby <span style="color:var(--text-muted)">Pro</span></h2>
             <div id="avatar-preview" class="avatar-uploader" onclick="document.getElementById('avatar-upload').click()"></div>
             <input type="file" id="avatar-upload" accept="image/*" style="display:none">
             
-            <input type="text" id="username-input" placeholder="Придумайте никнейм" maxlength="15">
-            <button class="btn" onclick="app.manualJoin()">Войти в комнату</button>
+            <input type="text" id="username-input" placeholder="Display Name" maxlength="20">
+            <button class="btn btn-primary" onclick="app.manualJoin()">Connect</button>
         </div>
     </div>
 
-    <!-- MAIN APP -->
-    <div id="app-screen" class="glass hidden">
+    <!-- APP -->
+    <div id="app-screen" class="hidden">
         <!-- Sidebar -->
         <div id="sidebar">
-            <div class="app-header">
-                <span>Участники</span>
-                <button class="logout-btn" onclick="app.logout()">Выйти</button>
-            </div>
-            <div id="user-list">
-                <!-- Users injected here -->
+            <div class="sidebar-header">
+                <span>ROOM #1</span>
+                <span class="logout-link" onclick="app.logout()">Disconnect</span>
             </div>
             
-            <div class="voice-panel">
-                <div>
-                    <div style="font-weight:600; font-size:0.9rem;">Микрофон</div>
-                    <div id="mic-status-text" style="font-size:0.75rem; color: var(--text-secondary);">Нажмите для вкл.</div>
-                </div>
-                <button id="mic-btn" class="mic-btn muted" onclick="app.toggleMic()">🎤</button>
+            <div id="user-list">
+                <!-- Users -->
+            </div>
+
+            <div class="voice-controls">
+                <button id="mic-btn" class="mic-btn muted" onclick="app.toggleMic()">
+                    <span id="mic-icon">✕</span>
+                    <span id="mic-text">Mic Off</span>
+                </button>
             </div>
         </div>
 
         <!-- Chat -->
         <div id="chat-area">
-            <div id="status-pill">● Подключение...</div>
+            <div id="diag">STATUS: OK</div>
             <div id="messages"></div>
             
-            <div class="chat-input-wrap">
-                <div class="chat-form">
-                    <input type="text" id="chat-input" class="chat-input" placeholder="Написать сообщение..." autocomplete="off">
-                    <button class="send-btn" onclick="app.sendMessage()">➤</button>
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="chat-input" placeholder="Message #general" autocomplete="off">
                 </div>
             </div>
         </div>
     </div>
 
 <script>
-// --- CONFIG ---
+// --- CONFIG (Тот же самый конфиг) ---
 const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
-const ROOM_ID = 'neon-lobby-v2'; // Уникальный ID комнаты
+const ROOM_ID = 'neon-lobby-v3-pro'; 
 const ICE_SERVERS = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' }
-        // Добавь сюда TURN если нужно
     ]
 };
 
+// --- LOGIC (Тот же самый JS класс, только методы рендера UI обновлены под новые классы) ---
 class NetLobby {
     constructor() {
         this.client = null;
@@ -265,20 +239,18 @@ class NetLobby {
         this.audioContext = null;
         this.isMuted = true;
         
-        // MQTT Topics
         this.topicPresence = `${ROOM_ID}/presence`;
         this.topicSignal = `${ROOM_ID}/signal/${this.myId}`;
         this.topicChat = `${ROOM_ID}/chat`;
     }
 
     init() {
-        // 1. Проверяем сохраненную сессию
         const sessionActive = localStorage.getItem('nl_session_active');
         const savedName = localStorage.getItem('nl_name');
         const savedAvatar = localStorage.getItem('nl_avatar');
         
-        // Дефолтная аватарка (градиент)
-        const defAvatar = 'https://ui-avatars.com/api/?background=6366f1&color=fff&name=User';
+        // Default Avatar - Abstract Gradient
+        const defAvatar = 'https://ui-avatars.com/api/?background=27272a&color=fff&name=User';
 
         if (savedAvatar) {
             this.myProfile.avatar = savedAvatar;
@@ -290,7 +262,6 @@ class NetLobby {
 
         if (savedName) document.getElementById('username-input').value = savedName;
 
-        // Обработчик загрузки фото
         document.getElementById('avatar-upload').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -302,50 +273,35 @@ class NetLobby {
             reader.readAsDataURL(file);
         });
 
-        // Обработчик Enter в чате
         document.getElementById('chat-input').addEventListener('keydown', (e) => {
             if(e.key === 'Enter') this.sendMessage();
         });
 
-        // АВТО-ВХОД
         if (sessionActive === 'true' && savedName) {
-            console.log("Restoring session...");
-            this.join(savedName, true); // true = skip UI animation logic immediately
+            this.join(savedName);
         }
     }
 
     manualJoin() {
         const name = document.getElementById('username-input').value.trim();
-        if (!name) return alert("Введите имя");
-        this.join(name, false);
+        if (!name) return alert("Enter name");
+        this.join(name);
     }
 
-    async join(name, isAutoJoin) {
+    async join(name) {
         this.myProfile.name = name;
-        
-        // Сохраняем сессию
         localStorage.setItem('nl_name', name);
         localStorage.setItem('nl_avatar', this.myProfile.avatar);
         localStorage.setItem('nl_session_active', 'true');
 
-        // Переключаем экраны
         document.getElementById('login-screen').classList.add('hidden');
-        const appScreen = document.getElementById('app-screen');
-        appScreen.classList.remove('hidden');
-        
-        // Плавное появление
-        setTimeout(() => appScreen.classList.add('visible'), 50);
+        document.getElementById('app-screen').classList.remove('hidden');
 
-        // Пытаемся получить микрофон (браузер может спросить разрешение)
-        // При авто-рефреше Chrome обычно помнит разрешение для HTTPS
         try {
             this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            // Сразу мьютим при входе, чтобы не пугать
             this.localStream.getAudioTracks()[0].enabled = false; 
             this.setupVAD(this.localStream, this.myId);
-        } catch (e) {
-            console.warn("Mic error:", e);
-        }
+        } catch (e) { console.warn("Mic error:", e); }
 
         this.connectMQTT();
     }
@@ -355,22 +311,19 @@ class NetLobby {
         location.reload();
     }
 
-    // --- MQTT Logic ---
-
+    // --- MQTT & WebRTC (Standard logic) ---
     connectMQTT() {
-        const statusEl = document.getElementById('status-pill');
         this.client = mqtt.connect(MQTT_BROKER);
-
         this.client.on('connect', () => {
-            statusEl.textContent = '● Online';
-            statusEl.style.color = '#10b981'; // Green
+            document.getElementById('diag').textContent = "CONNECTED";
+            document.getElementById('diag').style.color = "var(--success)";
             
             this.client.subscribe(this.topicPresence);
             this.client.subscribe(`${ROOM_ID}/signal/${this.myId}`);
             this.client.subscribe(this.topicChat);
 
             this.announce();
-            setInterval(() => this.announce(), 4000);
+            setInterval(() => this.announce(), 5000);
         });
 
         this.client.on('message', (topic, msg) => {
@@ -382,37 +335,26 @@ class NetLobby {
     }
 
     announce() {
-        this.client.publish(this.topicPresence, JSON.stringify({ 
-            id: this.myId, user: this.myProfile 
-        }));
+        this.client.publish(this.topicPresence, JSON.stringify({ id: this.myId, user: this.myProfile }));
     }
 
     handlePresence(data) {
         if (data.id === this.myId) return;
-        
         if (!this.users[data.id]) {
             this.users[data.id] = data.user;
             this.updateRoster();
-            // Mesh Logic: ID comparison to avoid double-call
             if (this.myId > data.id) this.createPeer(data.id, true);
         }
-        // Здесь можно добавить логику "последний раз видели", чтобы удалять офлайн юзеров
     }
-
-    // --- WebRTC Logic ---
 
     createPeer(targetId, initiator) {
         if (this.peers[targetId]) return;
-
         const pc = new RTCPeerConnection(ICE_SERVERS);
-        if (this.localStream) {
-            this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
-        }
-
+        if (this.localStream) this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
+        
         pc.onicecandidate = (e) => {
             if (e.candidate) this.sendSignal(targetId, { type: 'candidate', candidate: e.candidate });
         };
-
         pc.ontrack = (e) => {
             const audio = new Audio();
             audio.srcObject = e.streams[0];
@@ -420,18 +362,12 @@ class NetLobby {
             document.body.appendChild(audio);
             this.setupVAD(e.streams[0], targetId);
         };
-
         pc.oniceconnectionstatechange = () => {
             if(pc.iceConnectionState == 'disconnected') this.removePeer(targetId);
         };
-
         this.peers[targetId] = pc;
-
         if (initiator) {
-            pc.createOffer().then(o => {
-                pc.setLocalDescription(o);
-                this.sendSignal(targetId, { type: 'sdp', sdp: o });
-            });
+            pc.createOffer().then(o => { pc.setLocalDescription(o); this.sendSignal(targetId, { type: 'sdp', sdp: o }); });
         }
     }
 
@@ -439,7 +375,6 @@ class NetLobby {
         if (!this.peers[data.senderId]) this.createPeer(data.senderId, false);
         const pc = this.peers[data.senderId];
         const sig = data.payload;
-
         if (sig.type === 'sdp') {
             await pc.setRemoteDescription(new RTCSessionDescription(sig.sdp));
             if (sig.sdp.type === 'offer') {
@@ -453,9 +388,7 @@ class NetLobby {
     }
 
     sendSignal(targetId, payload) {
-        this.client.publish(`${ROOM_ID}/signal/${targetId}`, JSON.stringify({
-            senderId: this.myId, payload
-        }));
+        this.client.publish(`${ROOM_ID}/signal/${targetId}`, JSON.stringify({ senderId: this.myId, payload }));
     }
 
     removePeer(id) {
@@ -464,68 +397,35 @@ class NetLobby {
         this.updateRoster();
     }
 
-    // --- VAD (Мигание иконки) ---
-    
-    setupVAD(stream, userId) {
-        if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        if (this.audioContext.state === 'suspended') this.audioContext.resume();
-
-        const src = this.audioContext.createMediaStreamSource(stream);
-        const analyser = this.audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        src.connect(analyser);
-        
-        const buffer = new Uint8Array(analyser.frequencyBinCount);
-
-        const checkAudio = () => {
-            // Если юзер вышел, прекращаем (для простоты оставляем цикл, но проверяем DOM)
-            analyser.getByteFrequencyData(buffer);
-            let sum = 0;
-            for(let val of buffer) sum += val;
-            const volume = sum / buffer.length;
-
-            // Ищем элемент в списке
-            const el = document.querySelector(`.user-item[data-uid="${userId}"]`);
-            if (el) {
-                if (volume > 10) el.classList.add('is-speaking');
-                else el.classList.remove('is-speaking');
-            }
-            requestAnimationFrame(checkAudio);
-        };
-        checkAudio();
-    }
-
-    // --- UI Helpers ---
+    // --- UI & VAD ---
 
     sendMessage() {
         const inp = document.getElementById('chat-input');
         const txt = inp.value.trim();
         if (!txt) return;
-        
         this.client.publish(this.topicChat, JSON.stringify({
-            id: this.myId,
-            name: this.myProfile.name,
-            avatar: this.myProfile.avatar,
-            text: txt
+            id: this.myId, name: this.myProfile.name, avatar: this.myProfile.avatar, text: txt
         }));
         inp.value = '';
     }
 
     renderMessage(data) {
         const box = document.getElementById('messages');
-        const isMe = data.id === this.myId;
-        
         const div = document.createElement('div');
-        div.className = `msg ${isMe ? 'mine' : ''}`;
-        
-        // Safe Text
+        div.className = 'msg';
         const safeText = data.text.replace(/</g, "&lt;");
         
+        // Modern "Discord-like" Row
         div.innerHTML = `
-            <div class="msg-ava" style="background-image: url('${data.avatar}')"></div>
-            <div class="msg-bubble">
-                <span class="msg-meta">${isMe ? 'Вы' : data.name}</span>
-                ${safeText}
+            <div class="msg-left">
+                <div class="msg-ava" style="background-image: url('${data.avatar}')"></div>
+            </div>
+            <div class="msg-right">
+                <div class="msg-header">
+                    <span class="msg-name">${data.name}</span>
+                    <span class="msg-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+                <div class="msg-content">${safeText}</div>
             </div>
         `;
         box.appendChild(div);
@@ -535,28 +435,42 @@ class NetLobby {
     updateRoster() {
         const list = document.getElementById('user-list');
         list.innerHTML = '';
-
-        // Render function
-        const renderUser = (u, id, isMe) => {
+        const render = (u, id, isMe) => {
             const div = document.createElement('div');
             div.className = 'user-item';
-            div.setAttribute('data-uid', id); // Important for VAD
+            div.setAttribute('data-uid', id);
             div.innerHTML = `
                 <div class="u-avatar" style="background-image: url('${u.avatar}')"></div>
-                <div class="u-info">
-                    <span class="u-name">${u.name} ${isMe ? '(Вы)' : ''}</span>
-                    <span class="u-status">Online</span>
-                </div>
+                <span class="u-name">${u.name} ${isMe ? '(You)' : ''}</span>
+                <div class="u-status"></div>
             `;
             list.appendChild(div);
         };
+        render(this.myProfile, this.myId, true);
+        Object.keys(this.users).forEach(k => render(this.users[k], k, false));
+    }
 
-        // Render Me first
-        renderUser(this.myProfile, this.myId, true);
-        // Render Others
-        Object.keys(this.users).forEach(k => {
-            renderUser(this.users[k], k, false);
-        });
+    setupVAD(stream, userId) {
+        if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.audioContext.state === 'suspended') this.audioContext.resume();
+        const src = this.audioContext.createMediaStreamSource(stream);
+        const analyser = this.audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        src.connect(analyser);
+        const buffer = new Uint8Array(analyser.frequencyBinCount);
+
+        const checkAudio = () => {
+            analyser.getByteFrequencyData(buffer);
+            let sum = 0; for(let val of buffer) sum += val;
+            const vol = sum / buffer.length;
+            const el = document.querySelector(`.user-item[data-uid="${userId}"]`);
+            if (el) {
+                if (vol > 10) el.classList.add('is-speaking');
+                else el.classList.remove('is-speaking');
+            }
+            requestAnimationFrame(checkAudio);
+        };
+        checkAudio();
     }
 
     toggleMic() {
@@ -565,24 +479,23 @@ class NetLobby {
         this.localStream.getAudioTracks()[0].enabled = !this.isMuted;
         
         const btn = document.getElementById('mic-btn');
-        const txt = document.getElementById('mic-status-text');
+        const icon = document.getElementById('mic-icon');
+        const txt = document.getElementById('mic-text');
         
         if (this.isMuted) {
-            btn.classList.remove('active');
-            btn.classList.add('muted');
-            txt.textContent = 'Микрофон выключен';
+            btn.className = 'mic-btn muted';
+            icon.textContent = '✕';
+            txt.textContent = 'Mic Off';
         } else {
-            btn.classList.add('active');
-            btn.classList.remove('muted');
-            txt.textContent = 'Говорите...';
+            btn.className = 'mic-btn active';
+            icon.textContent = '●';
+            txt.textContent = 'Speaking...';
         }
     }
 }
 
-// Start
 const app = new NetLobby();
 app.init();
-
 </script>
 </body>
 </html>
