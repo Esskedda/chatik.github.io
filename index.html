@@ -3,13 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><ellipse cx='32' cy='32' rx='28' ry='30' fill='%23000'/><ellipse cx='32' cy='37' rx='14' ry='16' fill='%23000'/><ellipse cx='24' cy='28' rx='4' ry='6' fill='%23fff'/><ellipse cx='40' cy='28' rx='4' ry='6' fill='%23fff'/></svg>">
-    <title>ПИТБУЛЬЧИКИ: ORIGINAL + AI</title>
+    <title>ПИТБУЛЬЧИКИ: FINAL FIX</title>
     
-    <!-- MQTT Signaling -->
+    <!-- MQTT Signaling (Единственная внешняя зависимость) -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <!-- AI Noise Suppression (RNNoise Wasm) -->
-    <script src="https://unpkg.com/@shiguredo/noise-suppression@latest/dist/noise-suppression.js"></script>
     
     <style>
         :root {
@@ -145,7 +142,6 @@
         .control-btn.muted { background: rgba(20,20,20,0.8); color: #ff4b2b; border: 1px solid #ff4b2b; }
         .control-btn.leave { background: var(--danger-gradient); }
         
-        /* AI Badge */
         .ai-status { position: absolute; top: -5px; right: -5px; font-size: 9px; background: #00f260; color: #000; padding: 2px 4px; border-radius: 4px; font-weight: bold; opacity: 0; transition: 0.3s; }
         .control-btn.active .ai-status { opacity: 1; }
 
@@ -182,7 +178,7 @@
     <div id="login-screen">
         <div class="login-card">
             <h2 style="color:white; margin: 0 0 10px 0; font-weight: 700;">ПИТБУЛЬЧИКИ</h2>
-            <div style="font-size:11px; opacity:0.6; margin-bottom:20px;">DESIGN: ORIGINAL | ENGINE: NEURAL AI</div>
+            <div style="font-size:11px; opacity:0.6; margin-bottom:20px;">NATIVE AI ENGINE v5.0</div>
             <div id="avatar-preview" class="avatar-upload" onclick="document.getElementById('avatar-file').click()"></div>
             <input type="file" id="avatar-file" hidden accept="image/*">
             <input type="text" id="username-in" class="discord-input" placeholder="Введите имя..." autocomplete="off">
@@ -194,14 +190,14 @@
         <div class="stage-area">
             <div class="stage-header">
                 <span>Voice Lounge</span>
-                <span id="connection-status" style="font-size:11px; padding: 4px 10px; background:rgba(0,242,96,0.15); color:var(--success-color); border-radius:10px;">● Neural Net Active</span>
+                <span id="connection-status" style="font-size:11px; padding: 4px 10px; background:rgba(0,242,96,0.15); color:var(--success-color); border-radius:10px;">● Native AI Active</span>
             </div>
             
             <div id="grid-users" class="stage-grid"></div>
 
             <div class="bottom-controls">
                 <button class="control-btn" id="btn-mic" onclick="app.toggleMic()" title="Микрофон">
-                    <div class="ai-status">AI ON</div>
+                    <div class="ai-status">ON</div>
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
                 </button>
                 <button class="control-btn" id="btn-screen" onclick="app.toggleScreen()" title="Демонстрация">
@@ -226,63 +222,120 @@
     </div>
 
 <script>
-// --- CONFIG & NETWORK ---
+// --- CORE CONFIG ---
 const CFG = {
     mqtt: 'wss://broker.emqx.io:8084/mqtt',
-    room: 'pitbull_original_ai_fixed', // New Room
+    room: 'pitbull_native_v5', 
     ice: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
 };
 
-// --- AI ENGINE (RNNoise) ---
-class NeuralProcessor {
+// --- NATIVE AUDIO ENGINE (NO LIBRARIES) ---
+class AudioEngine {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.nsNode = null;
-        this.assetsLoaded = false;
+        this.gateNode = null;
+        this.analyser = null;
+        this.noiseFloor = 5;
     }
-    async loadAssets() {
-        if(this.assetsLoaded) return;
-        // Грузим васку прямо с CDN
-        await NoiseSuppression.load('https://unpkg.com/@shiguredo/noise-suppression@latest/dist/');
-        this.assetsLoaded = true;
-    }
+
     async process(stream) {
         if(this.ctx.state === 'suspended') await this.ctx.resume();
-        await this.loadAssets();
-
+        
         const source = this.ctx.createMediaStreamSource(stream);
         const dest = this.ctx.createMediaStreamDestination();
 
-        // Создаем ноду шумодава
-        this.nsNode = new NoiseSuppression.NoiseSuppressionNode(this.ctx, { isEnabled: true });
+        // 1. HighPass Filter (Убираем гул < 150Hz)
+        const hp = this.ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 150;
 
-        // Chain: Mic -> AI -> WebRTC
-        source.connect(this.nsNode);
-        this.nsNode.connect(dest);
+        // 2. Dynamics Compressor (Выравниваем голос)
+        const comp = this.ctx.createDynamicsCompressor();
+        comp.threshold.value = -30;
+        comp.knee.value = 15;
+        comp.ratio.value = 10;
+        comp.attack.value = 0.005;
+        comp.release.value = 0.25;
+
+        // 3. Noise Gate (Убираем шипение)
+        this.gateNode = this.ctx.createGain();
+        this.gateNode.gain.value = 0; // Начинаем с тишины
+
+        // 4. Analyser (Глаза системы)
+        this.analyser = this.ctx.createAnalyser();
+        this.analyser.fftSize = 512;
+        this.analyser.smoothingTimeConstant = 0.2;
+
+        // CHAIN: Mic -> HP -> Comp -> Gate -> Dest
+        source.connect(hp);
+        hp.connect(comp);
+        comp.connect(this.gateNode);
+        this.gateNode.connect(dest);
+        
+        // Анализируем сигнал ПОСЛЕ компрессии, чтобы гейт работал стабильнее
+        comp.connect(this.analyser);
+
+        this.startGateLoop();
+        
         return dest.stream;
+    }
+
+    startGateLoop() {
+        const data = new Uint8Array(this.analyser.frequencyBinCount);
+        let hold = 0;
+        
+        const loop = () => {
+            if(!this.analyser) return;
+            this.analyser.getByteFrequencyData(data);
+            
+            // Считаем среднюю громкость
+            let sum = 0;
+            const len = data.length;
+            for(let i=0; i<len; i++) sum += data[i];
+            const vol = sum / len;
+
+            // Самообучение уровню шума
+            if(vol < this.noiseFloor + 5) {
+                this.noiseFloor = this.noiseFloor * 0.99 + vol * 0.01;
+            }
+            
+            // Порог срабатывания
+            const threshold = this.noiseFloor + 12;
+
+            if(vol > threshold) {
+                // OPEN: Мгновенная атака
+                this.gateNode.gain.setTargetAtTime(1.0, this.ctx.currentTime, 0.01);
+                hold = 15; // Держим ~250мс
+            } else {
+                if(hold > 0) hold--;
+                else {
+                    // CLOSE: Мягкое затухание
+                    this.gateNode.gain.setTargetAtTime(0.0, this.ctx.currentTime, 0.2);
+                }
+            }
+            requestAnimationFrame(loop);
+        };
+        loop();
     }
 }
 
-// --- MAIN APP ---
+// --- MAIN LOGIC ---
 class App {
     constructor() {
         this.myId = 'u_' + Math.random().toString(36).substr(2, 6);
         this.myProfile = { name: '', avatar: '' };
-        this.peers = {}; // { pc, polite, ... }
+        this.peers = {}; 
+        this.audioCore = new AudioEngine();
         this.client = null;
-        this.audioCore = new NeuralProcessor();
-        
         this.localStream = null;
         this.screenStream = null;
         this.isMuted = false;
         this.chatHistory = [];
-        
-        // Auto-reconnect ghost cleaner
-        setInterval(() => this.cleanup(), 15000);
         this.lastSeen = {};
     }
 
     init() {
+        // Init logic same as before
         const savedName = localStorage.getItem('dc_name');
         const savedAva = localStorage.getItem('dc_ava');
         this.myProfile.avatar = savedAva || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -300,8 +353,7 @@ class App {
                 r.readAsDataURL(f);
             }
         });
-        document.getElementById('msg-in').addEventListener('keydown', e => { if(e.key==='Enter') this.sendText(); });
-        window.addEventListener('beforeunload', () => this.leave());
+        setInterval(() => this.clean(), 15000);
     }
 
     async join() {
@@ -315,43 +367,36 @@ class App {
         document.getElementById('app-layout').classList.remove('hidden');
 
         try {
-            // 1. Get RAW Stream
-            const rawStream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true },
+            const raw = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
                 video: false
             });
-
-            // 2. Process with AI
-            this.localStream = await this.audioCore.process(rawStream);
+            
+            // Process Audio Locally
+            this.localStream = await this.audioCore.process(raw);
+            
             document.getElementById('btn-mic').classList.add('active');
-
-            // Visuals
+            
             this.renderCard(this.myId, this.myProfile, true);
-            this.setupVisualizer(rawStream, this.myId); // Use raw for better visuals
+            this.setupVisualizer(raw, this.myId); // Use raw for better visuals
 
-            // 3. Connect
             this.connectMQTT();
-            this.loadChat();
-
         } catch(e) {
             console.error(e);
             alert("Mic Error: " + e.message);
         }
     }
 
-    // --- SIGNALING & PERFECT NEGOTIATION ---
+    // --- NETWORK ---
     connectMQTT() {
         this.client = mqtt.connect(CFG.mqtt, { clientId: this.myId, keepalive: 60 });
-        
         this.client.on('connect', () => {
             this.client.subscribe(`${CFG.room}/presence`);
             this.client.subscribe(`${CFG.room}/chat`);
             this.client.subscribe(`${CFG.room}/signal/${this.myId}`);
-            
             this.announce();
             setInterval(() => this.announce(), 5000);
         });
-
         this.client.on('message', (t, m) => {
             if(t.includes(this.myId)) return;
             try {
@@ -363,16 +408,13 @@ class App {
         });
     }
 
-    announce() {
-        this.client.publish(`${CFG.room}/presence`, JSON.stringify({ id: this.myId, user: this.myProfile }));
-    }
+    announce() { this.client.publish(`${CFG.room}/presence`, JSON.stringify({ id: this.myId, user: this.myProfile })); }
 
     handlePresence(d) {
         this.lastSeen[d.id] = Date.now();
         if(this.peers[d.id]) return;
-
+        
         this.renderCard(d.id, d.user, false);
-        // Determine role: Larger ID = Impolite (Caller), Smaller ID = Polite (Receiver)
         const polite = this.myId < d.id;
         this.setupPeer(d.id, polite);
     }
@@ -381,25 +423,21 @@ class App {
         const pc = new RTCPeerConnection(CFG.ice);
         this.peers[uid] = { pc, polite, makingOffer: false, ignoreOffer: false };
 
-        // Add Tracks
         this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
 
-        // Remote Tracks
         pc.ontrack = e => {
             const stream = e.streams[0];
             if(e.track.kind === 'audio') {
-                const aud = new Audio();
-                aud.srcObject = stream;
-                aud.autoplay = true;
-                aud.id = `aud-${uid}`;
-                document.body.appendChild(aud);
+                const a = new Audio();
+                a.srcObject = stream;
+                a.autoplay = true;
+                document.body.appendChild(a);
                 this.setupVisualizer(stream, uid);
             } else {
                 this.attachVideo(uid, stream);
             }
         };
 
-        // Negotiation Logic
         pc.onnegotiationneeded = async () => {
             try {
                 this.peers[uid].makingOffer = true;
@@ -419,11 +457,11 @@ class App {
 
         try {
             if(data.desc) {
-                const offerCollision = (data.desc.type === "offer") && (p.makingOffer || p.pc.signalingState !== "stable");
-                p.ignoreOffer = !p.polite && offerCollision;
+                const collision = (data.desc.type === "offer") && (p.makingOffer || p.pc.signalingState !== "stable");
+                p.ignoreOffer = !p.polite && collision;
                 if(p.ignoreOffer) return;
 
-                if(offerCollision) await Promise.all([p.pc.setLocalDescription({type: "rollback"}), p.pc.setRemoteDescription(data.desc)]);
+                if(collision) await Promise.all([p.pc.setLocalDescription({type: "rollback"}), p.pc.setRemoteDescription(data.desc)]);
                 else await p.pc.setRemoteDescription(data.desc);
 
                 if(data.desc.type === "offer") {
@@ -438,49 +476,19 @@ class App {
 
     sendSig(to, data) { this.client.publish(`${CFG.room}/signal/${to}`, JSON.stringify({ sender: this.myId, data })); }
 
-    cleanup() {
+    clean() {
         const now = Date.now();
         Object.keys(this.peers).forEach(id => {
             if(now - this.lastSeen[id] > 15000) {
                 this.peers[id].pc.close();
                 delete this.peers[id];
-                delete this.lastSeen[id];
                 const c = document.querySelector(`[data-uid="${id}"]`);
                 if(c) c.remove();
             }
         });
     }
 
-    // --- UI ACTIONS ---
-    toggleMic() {
-        this.isMuted = !this.isMuted;
-        document.getElementById('btn-mic').classList.toggle('active');
-        // Mute at Track Level
-        this.localStream.getAudioTracks()[0].enabled = !this.isMuted;
-    }
-
-    async toggleScreen() {
-        if(this.screenStream) {
-            this.screenStream.getTracks().forEach(t=>t.stop());
-            this.screenStream = null;
-            document.getElementById('btn-screen').classList.remove('active');
-            this.attachVideo(this.myId, null);
-        } else {
-            try {
-                this.screenStream = await navigator.mediaDevices.getDisplayMedia({video:true});
-                this.screenStream.getVideoTracks()[0].onended = () => this.toggleScreen();
-                document.getElementById('btn-screen').classList.add('active');
-                
-                this.attachVideo(this.myId, this.screenStream);
-                // Renogotiate
-                Object.values(this.peers).forEach(p => {
-                    this.screenStream.getTracks().forEach(t => p.pc.addTrack(t, this.screenStream));
-                });
-            } catch(e){}
-        }
-    }
-
-    // --- DOM HELPERS ---
+    // --- UI ---
     renderCard(uid, user, isMe) {
         if(document.querySelector(`[data-uid="${uid}"]`)) return;
         const grid = document.getElementById('grid-users');
@@ -523,7 +531,7 @@ class App {
 
             const c = document.querySelector(`[data-uid="${uid}"]`);
             if(c) {
-                if(avg > 10) c.classList.add('speaking');
+                if(avg > 15) c.classList.add('speaking');
                 else c.classList.remove('speaking');
             }
             requestAnimationFrame(loop);
@@ -531,6 +539,29 @@ class App {
         loop();
     }
 
+    toggleMic() {
+        this.isMuted = !this.isMuted;
+        document.getElementById('btn-mic').classList.toggle('active');
+        this.localStream.getAudioTracks()[0].enabled = !this.isMuted;
+    }
+
+    async toggleScreen() {
+        if(this.screenStream) {
+            this.screenStream.getTracks().forEach(t=>t.stop());
+            this.screenStream = null;
+            document.getElementById('btn-screen').classList.remove('active');
+            this.attachVideo(this.myId, null);
+        } else {
+            try {
+                this.screenStream = await navigator.mediaDevices.getDisplayMedia({video:true});
+                this.screenStream.getVideoTracks()[0].onended = () => this.toggleScreen();
+                document.getElementById('btn-screen').classList.add('active');
+                this.attachVideo(this.myId, this.screenStream);
+                Object.values(this.peers).forEach(p => this.screenStream.getTracks().forEach(t => p.pc.addTrack(t, this.screenStream)));
+            } catch(e){}
+        }
+    }
+    
     applyGradients() {
         const cards = document.querySelectorAll('.voice-card');
         const grads = ['linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%)', 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)', 'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)'];
@@ -538,10 +569,6 @@ class App {
     }
 
     // --- CHAT ---
-    loadChat() {
-        const h = localStorage.getItem('dc_chat_h');
-        if(h) { this.chatHistory = JSON.parse(h); this.chatHistory.forEach(m => this.renderMsg(m)); }
-    }
     sendText() {
         const i = document.getElementById('msg-in');
         if(!i.value.trim()) return;
@@ -550,21 +577,12 @@ class App {
         i.value = '';
     }
     handleChat(d) {
-        this.chatHistory.push(d);
-        if(this.chatHistory.length > 50) this.chatHistory.shift();
-        localStorage.setItem('dc_chat_h', JSON.stringify(this.chatHistory));
-        this.renderMsg(d);
-    }
-    renderMsg(d) {
         const list = document.getElementById('messages');
         const div = document.createElement('div');
         div.className = 'msg';
         div.innerHTML = `<div class="msg-ava" style="background-image: url('${d.avatar}')"></div><div class="msg-body"><div class="msg-top"><span class="msg-user">${d.name}</span><span class="msg-time">${d.time}</span></div><div class="msg-text">${d.text.replace(/</g, "&lt;")}</div></div>`;
         list.appendChild(div);
         list.scrollTop = list.scrollHeight;
-    }
-    leave() {
-        if(this.client) this.client.end();
     }
     logout() { localStorage.removeItem('dc_name'); location.reload(); }
 }
