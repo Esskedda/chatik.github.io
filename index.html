@@ -3,124 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NetLobby (Serverless)</title>
-    <!-- Подключаем MQTT библиотеку для сигналинга без своего сервера -->
+    <title>NeonLobby</title>
+    <!-- Подключаем MQTT и Google Fonts -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --bg-dark: #202225;
-            --bg-sidebar: #2f3136;
-            --bg-chat: #36393f;
-            --bg-input: #40444b;
-            --text-main: #dcddde;
-            --accent: #5865f2;
-            --accent-hover: #4752c4;
-            --red: #ed4245;
-            --green: #3ba55c;
+            --glass-bg: rgba(20, 20, 30, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: 20px;
+            --accent: #6366f1; /* Indigo */
+            --accent-glow: rgba(99, 102, 241, 0.5);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
         }
-        body, html { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-dark); color: var(--text-main); height: 100%; overflow: hidden; }
+
+        * { box-sizing: border-box; outline: none; }
         
+        body, html { 
+            margin: 0; padding: 0; height: 100%; 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-speak { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+
         .hidden { display: none !important; }
-        .btn { padding: 10px 20px; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-primary { background: var(--accent); }
-        .btn-primary:hover { background: var(--accent-hover); }
-        
-        /* Login */
-        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: var(--bg-dark); }
-        .login-box { background: var(--bg-sidebar); padding: 30px; border-radius: 8px; width: 300px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; }
-        .login-box input { width: 100%; padding: 10px; margin: 10px 0; background: var(--bg-input); border: 1px solid #202225; color: white; border-radius: 4px; box-sizing: border-box; }
-        .avatar-preview { width: 80px; height: 80px; border-radius: 50%; background: #555; margin: 0 auto 15px; background-size: cover; background-position: center; border: 2px solid var(--accent); }
 
-        /* App */
-        #app-screen { display: flex; height: 100vh; }
-        #sidebar { width: 240px; background: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid #202225; }
-        .sidebar-header { padding: 15px; border-bottom: 1px solid #202225; font-weight: bold; font-size: 0.9em; text-transform: uppercase; color: #8e9297; }
-        #user-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .user-item { display: flex; align-items: center; padding: 8px; border-radius: 4px; margin-bottom: 2px; }
-        .user-item:hover { background: rgba(79,84,92,0.32); }
-        .user-avatar { width: 32px; height: 32px; border-radius: 50%; margin-right: 10px; background-size: cover; background-color: #555; position: relative; }
-        .user-name { font-size: 0.95em; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .speaking-indicator { border: 2px solid var(--green); box-shadow: 0 0 5px var(--green); }
-        
-        #chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-chat); position: relative; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .message { display: flex; align-items: flex-start; }
-        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; background-size: cover; background-color: #555; flex-shrink: 0; }
-        .msg-content { display: flex; flex-direction: column; }
-        .msg-header { display: flex; align-items: baseline; margin-bottom: 2px; }
-        .msg-author { font-weight: bold; color: white; margin-right: 8px; }
-        .msg-time { font-size: 0.75em; color: #72767d; }
-        .msg-text { color: #dcddde; word-break: break-word; line-height: 1.4; }
-        
-        .input-wrapper { padding: 20px; background: var(--bg-chat); }
-        .input-box { background: var(--bg-input); border-radius: 8px; padding: 0 15px; display: flex; align-items: center; }
-        #chat-input { background: transparent; border: none; color: white; padding: 15px 0; width: 100%; outline: none; font-size: 1em; }
+        /* --- Utility: Glass Effect --- */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+        }
 
-        #voice-controls { height: 50px; background: #292b2f; display: flex; align-items: center; padding: 0 10px; justify-content: space-between; border-top: 1px solid #202225; }
-        .vc-status { font-size: 0.8em; color: var(--green); font-weight: bold; }
-        .vc-btn { background: transparent; border: none; color: white; cursor: pointer; padding: 5px; border-radius: 4px; }
-        .vc-btn:hover { background: #3f4147; }
-        .vc-btn.muted { color: var(--red); }
+        /* --- Login Screen --- */
+        #login-screen {
+            display: flex; height: 100vh; align-items: center; justify-content: center;
+            background: radial-gradient(circle at 50% 50%, #2e2a5b 0%, #0f172a 100%);
+        }
+        .login-card {
+            width: 360px; padding: 40px; border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            animation: fadeIn 0.6s ease-out;
+        }
+        .avatar-uploader {
+            width: 100px; height: 100px; margin: 0 auto 20px;
+            border-radius: 50%; border: 3px solid var(--glass-border);
+            background-size: cover; background-position: center; background-color: #1f2937;
+            cursor: pointer; transition: all 0.3s; position: relative;
+        }
+        .avatar-uploader:hover { border-color: var(--accent); transform: scale(1.05); }
+        .avatar-uploader::after {
+            content: '+'; position: absolute; bottom: 0; right: 0;
+            background: var(--accent); color: white; width: 28px; height: 28px;
+            border-radius: 50%; line-height: 28px; font-weight: bold;
+        }
+        
+        input[type="text"] {
+            width: 100%; padding: 14px; margin-bottom: 20px;
+            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+            border-radius: 12px; color: white; font-size: 1rem; text-align: center;
+            transition: 0.3s;
+        }
+        input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+        
+        .btn {
+            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            font-weight: 600; font-size: 1rem; cursor: pointer; transition: 0.3s;
+            background: var(--accent); color: white;
+        }
+        .btn:hover { background: #4f46e5; box-shadow: 0 0 20px var(--accent-glow); transform: translateY(-1px); }
 
-        #diagnostics { position: absolute; top: 0; right: 0; background: rgba(0,0,0,0.7); color: lime; font-family: monospace; font-size: 10px; padding: 5px; pointer-events: none; z-index: 1000; }
+        /* --- Main App Layout --- */
+        #app-screen { display: flex; height: 100vh; opacity: 0; transition: opacity 0.5s; }
+        #app-screen.visible { opacity: 1; }
+
+        /* Sidebar */
+        #sidebar {
+            width: 280px; display: flex; flex-direction: column; z-index: 10;
+            border-right: 1px solid var(--glass-border);
+        }
+        .app-header {
+            padding: 20px; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.5px;
+            background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--glass-border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logout-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; }
+        .logout-btn:hover { color: var(--danger); }
+
+        #user-list { flex: 1; overflow-y: auto; padding: 15px; }
+        .user-item {
+            display: flex; align-items: center; padding: 10px; 
+            border-radius: 12px; margin-bottom: 5px; transition: 0.2s;
+        }
+        .user-item:hover { background: rgba(255,255,255,0.05); }
+        .u-avatar {
+            width: 42px; height: 42px; border-radius: 50%; margin-right: 12px;
+            background-size: cover; background-color: #374151; border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        /* Анимация говорения */
+        .is-speaking .u-avatar {
+            border-color: var(--success);
+            animation: pulse-speak 1.5s infinite;
+        }
+        
+        .u-info { display: flex; flex-direction: column; }
+        .u-name { font-weight: 600; font-size: 0.95rem; }
+        .u-status { font-size: 0.75rem; color: var(--text-secondary); }
+
+        /* Voice Panel */
+        .voice-panel {
+            padding: 20px; background: rgba(0,0,0,0.3);
+            border-top: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: space-between;
+        }
+        .mic-btn {
+            width: 48px; height: 48px; border-radius: 50%; border: none;
+            background: rgba(255,255,255,0.1); color: white; font-size: 1.2rem; cursor: pointer; transition: 0.3s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mic-btn:hover { background: rgba(255,255,255,0.2); }
+        .mic-btn.active { background: var(--success); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+        .mic-btn.muted { background: var(--danger); position: relative; }
+        .mic-btn.muted::after { content: ''; width: 2px; height: 24px; background: white; position: absolute; transform: rotate(45deg); }
+
+        /* Chat Area */
+        #chat-area { flex: 1; display: flex; flex-direction: column; position: relative; background: rgba(0,0,0,0.2); }
+        #messages {
+            flex: 1; overflow-y: auto; padding: 25px; display: flex; flex-direction: column; gap: 15px;
+            scroll-behavior: smooth;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        .msg { display: flex; align-items: flex-start; animation: fadeIn 0.3s ease; max-width: 80%; }
+        .msg.mine { align-self: flex-end; flex-direction: row-reverse; }
+        
+        .msg-ava { width: 36px; height: 36px; border-radius: 50%; background-size: cover; margin: 0 12px; flex-shrink: 0; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        
+        .msg-bubble {
+            background: rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 18px;
+            border-top-left-radius: 4px; color: var(--text-primary); line-height: 1.5;
+            position: relative; border: 1px solid var(--glass-border);
+        }
+        .msg.mine .msg-bubble {
+            background: var(--accent); border-top-left-radius: 18px; border-top-right-radius: 4px;
+            box-shadow: 0 4px 15px var(--accent-glow); border: none;
+        }
+        .msg-meta { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px; display: block; }
+        .msg.mine .msg-meta { text-align: right; color: rgba(255,255,255,0.7); }
+
+        /* Input Area */
+        .chat-input-wrap { padding: 20px; }
+        .chat-form {
+            background: rgba(0,0,0,0.4); border-radius: 16px; padding: 8px 8px 8px 20px;
+            display: flex; align-items: center; border: 1px solid var(--glass-border);
+            transition: 0.3s;
+        }
+        .chat-form:focus-within { border-color: var(--accent); box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
+        .chat-input { background: transparent; border: none; color: white; width: 100%; font-size: 1rem; }
+        .send-btn {
+            background: rgba(255,255,255,0.1); border: none; border-radius: 10px;
+            width: 40px; height: 40px; color: white; cursor: pointer; transition: 0.2s;
+        }
+        .send-btn:hover { background: var(--accent); }
+
+        /* Diagnostics */
+        #status-pill {
+            position: absolute; top: 15px; right: 20px;
+            background: rgba(0,0,0,0.6); padding: 6px 12px; border-radius: 20px;
+            font-size: 0.75rem; color: var(--success); font-family: monospace;
+            border: 1px solid var(--glass-border); pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
+    <!-- LOGIN SCREEN -->
     <div id="login-screen">
-        <div class="login-box">
-            <h2 style="color:white; margin-bottom: 20px;">NetLobby (GH Pages)</h2>
-            <div id="avatar-preview" class="avatar-preview"></div>
+        <div class="login-card glass">
+            <h1 style="margin: 0 0 10px 0; font-weight: 800;">NEON<span style="color:var(--accent)">LOBBY</span></h1>
+            <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.9rem;">Voice & Chat Space</p>
+            
+            <div id="avatar-preview" class="avatar-uploader" onclick="document.getElementById('avatar-upload').click()"></div>
             <input type="file" id="avatar-upload" accept="image/*" style="display:none">
-            <button class="btn" style="background:#4f545c; font-size:0.8em; margin-bottom:10px;" onclick="document.getElementById('avatar-upload').click()">Выбрать фото</button>
-            <input type="text" id="username-input" placeholder="Никнейм" maxlength="20">
-            <button class="btn btn-primary" style="width:100%" onclick="app.join()">Войти</button>
+            
+            <input type="text" id="username-input" placeholder="Придумайте никнейм" maxlength="15">
+            <button class="btn" onclick="app.manualJoin()">Войти в комнату</button>
         </div>
     </div>
 
-    <div id="app-screen" class="hidden">
+    <!-- MAIN APP -->
+    <div id="app-screen" class="glass hidden">
+        <!-- Sidebar -->
         <div id="sidebar">
-            <div class="sidebar-header">Комната #Lobby</div>
-            <div id="user-list"></div>
-            <div id="voice-controls">
-                <div style="display:flex; flex-direction:column;">
-                    <span style="font-size:0.75em; color:#b9bbbe;">Голос</span>
-                    <span id="connection-status" class="vc-status">Ожидание...</span>
+            <div class="app-header">
+                <span>Участники</span>
+                <button class="logout-btn" onclick="app.logout()">Выйти</button>
+            </div>
+            <div id="user-list">
+                <!-- Users injected here -->
+            </div>
+            
+            <div class="voice-panel">
+                <div>
+                    <div style="font-weight:600; font-size:0.9rem;">Микрофон</div>
+                    <div id="mic-status-text" style="font-size:0.75rem; color: var(--text-secondary);">Нажмите для вкл.</div>
                 </div>
-                <button class="vc-btn" id="mic-btn" onclick="app.toggleMic()">🎤</button>
+                <button id="mic-btn" class="mic-btn muted" onclick="app.toggleMic()">🎤</button>
             </div>
         </div>
-        <div id="chat-area">
-            <div id="messages"></div>
-            <div class="input-wrapper">
-                <div class="input-box">
-                    <input type="text" id="chat-input" placeholder="Написать сообщение..." onkeydown="if(event.key==='Enter') app.sendMessage()">
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <div id="diagnostics">
-        MQTT: <span id="diag-mqtt">Connecting...</span><br>
-        Peers: <span id="diag-peers">0</span>
+        <!-- Chat -->
+        <div id="chat-area">
+            <div id="status-pill">● Подключение...</div>
+            <div id="messages"></div>
+            
+            <div class="chat-input-wrap">
+                <div class="chat-form">
+                    <input type="text" id="chat-input" class="chat-input" placeholder="Написать сообщение..." autocomplete="off">
+                    <button class="send-btn" onclick="app.sendMessage()">➤</button>
+                </div>
+            </div>
+        </div>
     </div>
 
 <script>
-/**
- * НАСТРОЙКИ
- * Мы используем публичный MQTT брокер (EMQX) вместо своего сервера.
- * ROOM_ID: уникальный ID комнаты. Чтобы создать "свою" приватную сеть, 
- * поменяй 'netlobby-public-ru-v1' на что-то уникальное (напр. 'my-secret-room-55').
- */
-const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt'; // Secure WebSocket
-const ROOM_ID = 'netlobby-public-ru-v1'; // <--- ПОМЕНЯЙ ЭТО ДЛЯ ПРИВАТНОСТИ
-
-// Конфиг WebRTC
+// --- CONFIG ---
+const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+const ROOM_ID = 'neon-lobby-v2'; // Уникальный ID комнаты
 const ICE_SERVERS = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        // Если голос не работает в РФ, нужен TURN. Бесплатные публичные TURN редки и живут недолго.
-        // { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' } 
+        { urls: 'stun:stun1.l.google.com:19302' }
+        // Добавь сюда TURN если нужно
     ]
 };
 
@@ -128,12 +258,12 @@ class NetLobby {
     constructor() {
         this.client = null;
         this.localStream = null;
-        this.peers = {}; // id -> { pc, user }
-        this.users = {}; // id -> user info (for UI)
+        this.peers = {}; 
+        this.users = {}; 
         this.myId = 'u_' + Math.random().toString(36).substr(2, 9);
-        this.myProfile = { name: 'User', avatar: '' };
+        this.myProfile = { name: '', avatar: '' };
         this.audioContext = null;
-        this.isMuted = false;
+        this.isMuted = true;
         
         // MQTT Topics
         this.topicPresence = `${ROOM_ID}/presence`;
@@ -142,17 +272,25 @@ class NetLobby {
     }
 
     init() {
-        // Загрузка профиля
+        // 1. Проверяем сохраненную сессию
+        const sessionActive = localStorage.getItem('nl_session_active');
         const savedName = localStorage.getItem('nl_name');
         const savedAvatar = localStorage.getItem('nl_avatar');
-        if (savedName) document.getElementById('username-input').value = savedName;
         
-        // Дефолтная аватарка
-        const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSIjNTg2NUYyIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI1MCIvPjwvc3ZnPg==';
-        this.myProfile.avatar = savedAvatar || defaultAvatar;
-        document.getElementById('avatar-preview').style.backgroundImage = `url(${this.myProfile.avatar})`;
+        // Дефолтная аватарка (градиент)
+        const defAvatar = 'https://ui-avatars.com/api/?background=6366f1&color=fff&name=User';
 
-        // Загрузка файла
+        if (savedAvatar) {
+            this.myProfile.avatar = savedAvatar;
+            document.getElementById('avatar-preview').style.backgroundImage = `url(${savedAvatar})`;
+        } else {
+            this.myProfile.avatar = defAvatar;
+            document.getElementById('avatar-preview').style.backgroundImage = `url(${defAvatar})`;
+        }
+
+        if (savedName) document.getElementById('username-input').value = savedName;
+
+        // Обработчик загрузки фото
         document.getElementById('avatar-upload').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -163,116 +301,118 @@ class NetLobby {
             };
             reader.readAsDataURL(file);
         });
+
+        // Обработчик Enter в чате
+        document.getElementById('chat-input').addEventListener('keydown', (e) => {
+            if(e.key === 'Enter') this.sendMessage();
+        });
+
+        // АВТО-ВХОД
+        if (sessionActive === 'true' && savedName) {
+            console.log("Restoring session...");
+            this.join(savedName, true); // true = skip UI animation logic immediately
+        }
     }
 
-    async join() {
+    manualJoin() {
         const name = document.getElementById('username-input').value.trim();
         if (!name) return alert("Введите имя");
+        this.join(name, false);
+    }
+
+    async join(name, isAutoJoin) {
         this.myProfile.name = name;
+        
+        // Сохраняем сессию
         localStorage.setItem('nl_name', name);
         localStorage.setItem('nl_avatar', this.myProfile.avatar);
+        localStorage.setItem('nl_session_active', 'true');
 
-        // Получаем микрофон
+        // Переключаем экраны
+        document.getElementById('login-screen').classList.add('hidden');
+        const appScreen = document.getElementById('app-screen');
+        appScreen.classList.remove('hidden');
+        
+        // Плавное появление
+        setTimeout(() => appScreen.classList.add('visible'), 50);
+
+        // Пытаемся получить микрофон (браузер может спросить разрешение)
+        // При авто-рефреше Chrome обычно помнит разрешение для HTTPS
         try {
             this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            this.setupVAD(this.localStream, 'local');
+            // Сразу мьютим при входе, чтобы не пугать
+            this.localStream.getAudioTracks()[0].enabled = false; 
+            this.setupVAD(this.localStream, this.myId);
         } catch (e) {
-            console.warn("No Mic:", e);
-            alert("Микрофон недоступен, режим слушателя.");
+            console.warn("Mic error:", e);
         }
 
-        // Интерфейс
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('app-screen').classList.remove('hidden');
         this.connectMQTT();
     }
 
-    // --- MQTT (Signaling) ---
+    logout() {
+        localStorage.removeItem('nl_session_active');
+        location.reload();
+    }
+
+    // --- MQTT Logic ---
 
     connectMQTT() {
-        document.getElementById('diag-mqtt').textContent = 'Connecting...';
-        
+        const statusEl = document.getElementById('status-pill');
         this.client = mqtt.connect(MQTT_BROKER);
 
         this.client.on('connect', () => {
-            document.getElementById('diag-mqtt').textContent = 'Connected';
-            document.getElementById('diag-mqtt').style.color = 'lime';
-            document.getElementById('connection-status').textContent = 'Подключено';
-
-            // Подписки
-            this.client.subscribe(this.topicPresence); // Кто онлайн?
-            this.client.subscribe(`${ROOM_ID}/signal/${this.myId}`); // Личные сообщения мне
-            this.client.subscribe(this.topicChat); // Общий чат
-
-            // Анонсируем себя (Hello message)
-            this.announcePresence();
+            statusEl.textContent = '● Online';
+            statusEl.style.color = '#10b981'; // Green
             
-            // Повторяем анонс раз в 5 сек (heartbeat), чтобы новые юзеры нас увидели
-            setInterval(() => this.announcePresence(), 5000);
+            this.client.subscribe(this.topicPresence);
+            this.client.subscribe(`${ROOM_ID}/signal/${this.myId}`);
+            this.client.subscribe(this.topicChat);
+
+            this.announce();
+            setInterval(() => this.announce(), 4000);
         });
 
-        this.client.on('message', async (topic, message) => {
-            const data = JSON.parse(message.toString());
-            
-            if (topic === this.topicPresence) {
-                this.handlePresence(data);
-            } else if (topic === this.topicChat) {
-                this.renderMessage(data);
-            } else {
-                // Личный сигнал (SDP/ICE)
-                this.handleSignal(data);
-            }
+        this.client.on('message', (topic, msg) => {
+            const data = JSON.parse(msg.toString());
+            if (topic === this.topicPresence) this.handlePresence(data);
+            else if (topic === this.topicChat) this.renderMessage(data);
+            else this.handleSignal(data);
         });
     }
 
-    announcePresence() {
-        const payload = { 
-            type: 'hello', 
-            id: this.myId, 
-            user: this.myProfile 
-        };
-        this.client.publish(this.topicPresence, JSON.stringify(payload));
+    announce() {
+        this.client.publish(this.topicPresence, JSON.stringify({ 
+            id: this.myId, user: this.myProfile 
+        }));
     }
 
     handlePresence(data) {
         if (data.id === this.myId) return;
-
-        // Если видим нового юзера, добавляем в UI
+        
         if (!this.users[data.id]) {
             this.users[data.id] = data.user;
-            this.updateUserList();
-            this.addSystemMessage(`${data.user.name} зашел в лобби.`);
-            
-            // WebRTC Mesh: Тот, у кого ID "больше" (лексикографически), инициирует звонок.
-            // Это простой способ избежать двойного дозвона.
-            if (this.myId > data.id) {
-                this.createPeer(data.id, true);
-            }
-        } else {
-            // Обновляем таймстамп "жизни", если нужно (тут упрощено)
+            this.updateRoster();
+            // Mesh Logic: ID comparison to avoid double-call
+            if (this.myId > data.id) this.createPeer(data.id, true);
         }
+        // Здесь можно добавить логику "последний раз видели", чтобы удалять офлайн юзеров
     }
 
-    // --- WebRTC ---
+    // --- WebRTC Logic ---
 
     createPeer(targetId, initiator) {
-        if (this.peers[targetId]) return; // Уже есть
+        if (this.peers[targetId]) return;
 
         const pc = new RTCPeerConnection(ICE_SERVERS);
-        
-        // Добавляем свой звук
         if (this.localStream) {
             this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
         }
 
-        // ICE кандидаты -> шлем через MQTT
         pc.onicecandidate = (e) => {
-            if (e.candidate) {
-                this.sendSignal(targetId, { type: 'candidate', candidate: e.candidate });
-            }
+            if (e.candidate) this.sendSignal(targetId, { type: 'candidate', candidate: e.candidate });
         };
 
-        // Входящий звук
         pc.ontrack = (e) => {
             const audio = new Audio();
             audio.srcObject = e.streams[0];
@@ -280,175 +420,169 @@ class NetLobby {
             document.body.appendChild(audio);
             this.setupVAD(e.streams[0], targetId);
         };
-        
-        // Чистим, если отвалился
+
         pc.oniceconnectionstatechange = () => {
-            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-                this.removePeer(targetId);
-            }
+            if(pc.iceConnectionState == 'disconnected') this.removePeer(targetId);
         };
 
         this.peers[targetId] = pc;
-        document.getElementById('diag-peers').textContent = Object.keys(this.peers).length;
 
         if (initiator) {
-            pc.createOffer().then(offer => {
-                pc.setLocalDescription(offer);
-                this.sendSignal(targetId, { type: 'sdp', sdp: offer });
+            pc.createOffer().then(o => {
+                pc.setLocalDescription(o);
+                this.sendSignal(targetId, { type: 'sdp', sdp: o });
             });
         }
     }
 
     async handleSignal(data) {
-        // data = { senderId, payload: { type, sdp/candidate } }
-        const peerId = data.senderId;
-        const signal = data.payload;
+        if (!this.peers[data.senderId]) this.createPeer(data.senderId, false);
+        const pc = this.peers[data.senderId];
+        const sig = data.payload;
 
-        // Если звонит кто-то неизвестный (мы его еще не видели в presence), создаем Peer как отвечающий
-        if (!this.peers[peerId]) {
-            this.createPeer(peerId, false);
-        }
-
-        const pc = this.peers[peerId];
-
-        if (signal.type === 'sdp') {
-            await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-            if (signal.sdp.type === 'offer') {
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                this.sendSignal(peerId, { type: 'sdp', sdp: answer });
+        if (sig.type === 'sdp') {
+            await pc.setRemoteDescription(new RTCSessionDescription(sig.sdp));
+            if (sig.sdp.type === 'offer') {
+                const ans = await pc.createAnswer();
+                await pc.setLocalDescription(ans);
+                this.sendSignal(data.senderId, { type: 'sdp', sdp: ans });
             }
-        } else if (signal.type === 'candidate') {
-            try { await pc.addIceCandidate(new RTCIceCandidate(signal.candidate)); } catch(e){}
+        } else if (sig.type === 'candidate') {
+            try { await pc.addIceCandidate(new RTCIceCandidate(sig.candidate)); } catch(e){}
         }
     }
 
     sendSignal(targetId, payload) {
-        // Публикуем в топик конкретного юзера
-        const topic = `${ROOM_ID}/signal/${targetId}`;
-        const msg = { senderId: this.myId, payload: payload };
-        this.client.publish(topic, JSON.stringify(msg));
+        this.client.publish(`${ROOM_ID}/signal/${targetId}`, JSON.stringify({
+            senderId: this.myId, payload
+        }));
     }
 
     removePeer(id) {
-        if (this.peers[id]) {
-            this.peers[id].close();
-            delete this.peers[id];
-            // Не удаляем из списка юзеров сразу, может он просто переподключается
-            // Но для упрощения можно удалить:
-            // delete this.users[id];
-            // this.updateUserList();
-            document.getElementById('diag-peers').textContent = Object.keys(this.peers).length;
-        }
+        if(this.peers[id]) { this.peers[id].close(); delete this.peers[id]; }
+        delete this.users[id];
+        this.updateRoster();
     }
 
-    // --- Chat & UI ---
+    // --- VAD (Мигание иконки) ---
+    
+    setupVAD(stream, userId) {
+        if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.audioContext.state === 'suspended') this.audioContext.resume();
+
+        const src = this.audioContext.createMediaStreamSource(stream);
+        const analyser = this.audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        src.connect(analyser);
+        
+        const buffer = new Uint8Array(analyser.frequencyBinCount);
+
+        const checkAudio = () => {
+            // Если юзер вышел, прекращаем (для простоты оставляем цикл, но проверяем DOM)
+            analyser.getByteFrequencyData(buffer);
+            let sum = 0;
+            for(let val of buffer) sum += val;
+            const volume = sum / buffer.length;
+
+            // Ищем элемент в списке
+            const el = document.querySelector(`.user-item[data-uid="${userId}"]`);
+            if (el) {
+                if (volume > 10) el.classList.add('is-speaking');
+                else el.classList.remove('is-speaking');
+            }
+            requestAnimationFrame(checkAudio);
+        };
+        checkAudio();
+    }
+
+    // --- UI Helpers ---
 
     sendMessage() {
-        const input = document.getElementById('chat-input');
-        const text = input.value.trim();
-        if(!text) return;
+        const inp = document.getElementById('chat-input');
+        const txt = inp.value.trim();
+        if (!txt) return;
         
-        const msg = {
+        this.client.publish(this.topicChat, JSON.stringify({
             id: this.myId,
             name: this.myProfile.name,
             avatar: this.myProfile.avatar,
-            text: text,
-            time: new Date().toLocaleTimeString().slice(0,5)
-        };
-        this.client.publish(this.topicChat, JSON.stringify(msg));
-        input.value = '';
+            text: txt
+        }));
+        inp.value = '';
     }
 
-    renderMessage(msg) {
-        const list = document.getElementById('messages');
+    renderMessage(data) {
+        const box = document.getElementById('messages');
+        const isMe = data.id === this.myId;
+        
         const div = document.createElement('div');
-        div.className = 'message';
-        const safeText = msg.text.replace(/</g, "&lt;");
+        div.className = `msg ${isMe ? 'mine' : ''}`;
+        
+        // Safe Text
+        const safeText = data.text.replace(/</g, "&lt;");
+        
         div.innerHTML = `
-            <div class="msg-avatar" style="background-image: url('${msg.avatar}')"></div>
-            <div class="msg-content">
-                <div class="msg-header">
-                    <span class="msg-author">${msg.name}</span>
-                    <span class="msg-time">${msg.time}</span>
-                </div>
-                <div class="msg-text">${safeText}</div>
-            </div>`;
-        list.appendChild(div);
-        list.scrollTop = list.scrollHeight;
+            <div class="msg-ava" style="background-image: url('${data.avatar}')"></div>
+            <div class="msg-bubble">
+                <span class="msg-meta">${isMe ? 'Вы' : data.name}</span>
+                ${safeText}
+            </div>
+        `;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
     }
 
-    addSystemMessage(text) {
-        const list = document.getElementById('messages');
-        const div = document.createElement('div');
-        div.style.cssText = 'color:#72767d; font-size:0.8em; margin: 5px 0 5px 60px;';
-        div.textContent = `> ${text}`;
-        list.appendChild(div);
-    }
-
-    updateUserList() {
+    updateRoster() {
         const list = document.getElementById('user-list');
         list.innerHTML = '';
-        
-        // Я
-        this.appendUserUI(this.myProfile, true);
-        
-        // Остальные
-        Object.values(this.users).forEach(u => this.appendUserUI(u, false));
-    }
 
-    appendUserUI(user, isSelf) {
-        const list = document.getElementById('user-list');
-        const div = document.createElement('div');
-        div.className = 'user-item';
-        if(isSelf) div.setAttribute('data-self','true');
-        else div.setAttribute('data-id', user.id); // Упрощено (в user нет id в объекте, но он есть в key)
-        
-        div.innerHTML = `
-            <div class="user-avatar" style="background-image: url('${user.avatar}')"></div>
-            <div class="user-name">${user.name} ${isSelf ? '(Вы)' : ''}</div>
-        `;
-        list.appendChild(div);
-    }
-
-    // --- Audio Helpers ---
-    setupVAD(stream, id) {
-        if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        if (this.audioContext.state === 'suspended') this.audioContext.resume();
-        const src = this.audioContext.createMediaStreamSource(stream);
-        const anl = this.audioContext.createAnalyser();
-        anl.fftSize = 256;
-        src.connect(anl);
-        const data = new Uint8Array(anl.frequencyBinCount);
-        
-        const loop = () => {
-            anl.getByteFrequencyData(data);
-            let sum=0; for(let i=0;i<data.length;i++) sum+=data[i];
-            const vol = sum/data.length;
-            
-            // Найти аватарку
-            let sel = id === 'local' ? '[data-self="true"] .user-avatar' : `.user-item .user-avatar`; // Упрощено
-            // В реальном коде нужно точнее искать по ID, здесь опустим для краткости
-            
-            // Визуализация "говорения" (зеленая рамка)
-            // ... реализация точного поиска DOM элемента ...
-            requestAnimationFrame(loop);
+        // Render function
+        const renderUser = (u, id, isMe) => {
+            const div = document.createElement('div');
+            div.className = 'user-item';
+            div.setAttribute('data-uid', id); // Important for VAD
+            div.innerHTML = `
+                <div class="u-avatar" style="background-image: url('${u.avatar}')"></div>
+                <div class="u-info">
+                    <span class="u-name">${u.name} ${isMe ? '(Вы)' : ''}</span>
+                    <span class="u-status">Online</span>
+                </div>
+            `;
+            list.appendChild(div);
         };
-        loop();
+
+        // Render Me first
+        renderUser(this.myProfile, this.myId, true);
+        // Render Others
+        Object.keys(this.users).forEach(k => {
+            renderUser(this.users[k], k, false);
+        });
     }
 
     toggleMic() {
-        if(!this.localStream) return;
+        if (!this.localStream) return;
         this.isMuted = !this.isMuted;
         this.localStream.getAudioTracks()[0].enabled = !this.isMuted;
+        
         const btn = document.getElementById('mic-btn');
-        btn.classList.toggle('muted');
-        document.getElementById('connection-status').textContent = this.isMuted ? 'Muted' : 'Connected';
+        const txt = document.getElementById('mic-status-text');
+        
+        if (this.isMuted) {
+            btn.classList.remove('active');
+            btn.classList.add('muted');
+            txt.textContent = 'Микрофон выключен';
+        } else {
+            btn.classList.add('active');
+            btn.classList.remove('muted');
+            txt.textContent = 'Говорите...';
+        }
     }
 }
 
+// Start
 const app = new NetLobby();
 app.init();
+
 </script>
 </body>
 </html>
