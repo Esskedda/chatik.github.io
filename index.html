@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><ellipse cx='32' cy='32' rx='28' ry='30' fill='%23000'/><ellipse cx='32' cy='37' rx='14' ry='16' fill='%23000'/><ellipse cx='24' cy='28' rx='4' ry='6' fill='%23fff'/><ellipse cx='40' cy='28' rx='4' ry='6' fill='%23fff'/></svg>">
     <title>ПИТБУЛЬЧИКИ</title>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="mqtt.min.js"></script>
+    <script src="rnnoise.js"></script>
     
     <style>
         :root {
@@ -319,8 +320,42 @@ const STUDIO_AUDIO_CONSTRAINTS = {
     googAutoGainControl: true,
     googNoiseSuppression: true,
     googHighpassFilter: true, // Убирает низкочастотный гул
-    channelCount: 1 // Моно (важно для изоляции голоса!)
+    channelCount: 1, // Моно (важно для изоляции голоса!)
+    sampleRate: 48000, // Высокое качество для AI обработки
+    sampleSize: 16
 };
+
+// --- AI NOISE SUPPRESSION ---
+let rnnoiseProcessor = null;
+let rnnoiseContext = null;
+
+async function initRNNoise() {
+    try {
+        rnnoiseContext = new AudioContext({ sampleRate: 48000 });
+        await rnnoiseContext.audioWorklet.addModule('rnnoise.js');
+        rnnoiseProcessor = new AudioWorkletNode(rnnoiseContext, 'rnnoise-processor');
+        console.log('RNNoise AI шумодав инициализирован');
+    } catch(e) {
+        console.warn('RNNoise не поддерживается:', e);
+    }
+}
+
+function applyRNNoiseToStream(originalStream) {
+    if (!rnnoiseProcessor || !rnnoiseContext) return originalStream;
+
+    try {
+        const source = rnnoiseContext.createMediaStreamSource(originalStream);
+        const destination = rnnoiseContext.createMediaStreamDestination();
+
+        source.connect(rnnoiseProcessor);
+        rnnoiseProcessor.connect(destination);
+
+        return destination.stream;
+    } catch(e) {
+        console.warn('Ошибка применения RNNoise:', e);
+        return originalStream;
+    }
+}
 
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
