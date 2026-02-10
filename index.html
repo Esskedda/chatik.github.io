@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><ellipse cx='32' cy='32' rx='28' ry='30' fill='%23000'/><ellipse cx='32' cy='37' rx='14' ry='16' fill='%23000'/><ellipse cx='24' cy='28' rx='4' ry='6' fill='%23fff'/><ellipse cx='40' cy='28' rx='4' ry='6' fill='%23fff'/></svg>">
     <title>ПИТБУЛЬЧИКИ ЧАТ</title>
-     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
     
     <style>
@@ -304,50 +303,6 @@
     </div>
 
 <script>
-
-   const app = new App();
-    app.init();
-
-    // --- НАЧАЛО ВСТАВКИ ДЛЯ TELEGRAM ---
-    (function() {
-        // Проверяем, открыто ли это в Telegram
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            tg.ready();   // Сообщаем, что приложение готово
-            tg.expand();  // Разворачиваем на весь экран
-
-            // Если есть данные пользователя, берем их
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                const user = tg.initDataUnsafe.user;
-                
-                // Формируем имя: Имя + Фамилия (если есть) или @username
-                let name = user.first_name;
-                if (user.last_name) name += " " + user.last_name;
-                if (!name) name = user.username ? "@" + user.username : "Telegram User";
-
-                // Находим поле ввода имени и вставляем туда данные
-                const nameInput = document.getElementById('username-in');
-                if (nameInput) {
-                    nameInput.value = name;
-                    nameInput.readOnly = true; // Запрещаем менять имя вручную
-                    
-                    // Сохраняем имя в локальное хранилище бота, чтобы логика работала
-                    localStorage.setItem('dcname', name);
-                }
-
-                // Автоматически нажимаем "Join", если сессия еще не активна
-                // (Потребуется разрешение на микрофон при первом входе)
-                setTimeout(() => {
-                    if (!localStorage.getItem('dcsession') && typeof app.join === 'function') {
-                        console.log("Auto-joining via Telegram...");
-                        app.join(); 
-                    }
-                }, 500);
-            }
-        }
-    })();
-
-    
 const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
 const ROOM_ID = 'pitbull-pro-v3-stable';
 const ICE_SERVERS = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] };
