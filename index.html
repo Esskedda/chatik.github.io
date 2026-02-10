@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><ellipse cx='32' cy='32' rx='28' ry='30' fill='%23000'/><ellipse cx='32' cy='37' rx='14' ry='16' fill='%23000'/><ellipse cx='24' cy='28' rx='4' ry='6' fill='%23fff'/><ellipse cx='40' cy='28' rx='4' ry='6' fill='%23fff'/></svg>">
-    <title>ПИТБУЛЬЧИКИ ЧАТ 2</title>
+    <title>ПИТБУЛЬЧИКИ ЧАТ 4/0</title>
     <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
     
     <style>
@@ -135,7 +135,7 @@
             opacity: 0; transition: 0.2s; pointer-events: none;
         }
         .voice-card:hover .expand-hint { opacity: 1; }
-        
+
         .close-zoom-btn {
             position: absolute; top: 20px; right: 20px; z-index: 101;
             background: rgba(0,0,0,0.6); color: white; border: none;
@@ -256,58 +256,46 @@
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
     <div id="login-screen">
         <div class="login-card">
-            <h2 style="margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px;">Вход в эфир</h2>
-            <div class="avatar-upload" id="avatar-preview" style="background-image: url('https://cdn.discordapp.com/embed/avatars/0.png');">
-                <input type="file" id="avatar-file" accept="image/*" style="opacity: 0; width: 100%; height: 100%; cursor: pointer;">
-            </div>
-            <input type="text" id="username-in" class="discord-input" placeholder="Твой никнейм" maxlength="15">
-            <button class="btn-discord" onclick="app.join()">ПОДКЛЮЧИТЬСЯ</button>
+            <h2 style="color:white; margin: 0 0 10px 0; font-weight: 700;">ПИТБУЛЬЧИКИ</h2>
+            <div id="avatar-preview" class="avatar-upload" onclick="document.getElementById('avatar-file').click()"></div>
+            <input type="file" id="avatar-file" hidden accept="image/*">
+            <input type="text" id="username-in" class="discord-input" placeholder="Введите имя..." autocomplete="off">
+            <button class="btn-discord" onclick="app.join()">Войти</button>
         </div>
     </div>
 
-    <!-- APP LAYOUT -->
     <div id="app-layout" class="hidden">
-        
-        <!-- MAIN STAGE -->
         <div class="stage-area">
             <div class="stage-header">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:10px; height:10px; background:#00f260; border-radius:50%; box-shadow: 0 0 10px #00f260;"></div>
-                    <span>Прямой эфир</span>
-                </div>
-                <div id="room-id-display" style="opacity: 0.5; font-size: 12px;">ROOM: MAIN</div>
+                <span>Voice Lounge</span>
+                <span id="connection-status" style="font-size:11px; padding: 4px 10px; background:rgba(0,242,96,0.15); color:var(--success-color); border-radius:10px;">● Online</span>
             </div>
-            <div class="stage-grid" id="grid">
-                <!-- CARDS will be here -->
-            </div>
+            
+            <div id="grid-users" class="stage-grid"></div>
 
-            <!-- CONTROLS -->
             <div class="bottom-controls">
-                <button class="control-btn" id="btn-mic" onclick="app.toggleMic()">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                <button class="control-btn active" id="btn-mic" onclick="app.toggleMic()" title="Микрофон">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2H3v2a9 9 0 0 0 8 8.88V22h2v-1.12A9 9 0 0 0 21 12v-2h-2Z"/></svg>
                 </button>
-                <button class="control-btn" id="btn-camera" onclick="app.toggleCamera()">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M15 8v8H5V8h10m1-2H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4V7c0-.55-.45-1-1-1z"/></svg>
+
+                <button class="control-btn active" id="btn-screen" onclick="app.toggleScreen()" title="Демонстрация">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M3 4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4Zm2 0v11h14V4H5Zm-1 15a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1H4Z"/></svg>
                 </button>
-                <button class="control-btn" id="btn-screen" onclick="app.shareScreen()">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.11-.9-2-2-2H4c-1.11 0-2 .89-2 2v10c0 1.1.89 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
-                </button>
-                <button class="control-btn leave" onclick="app.logout()">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+
+                <button class="control-btn leave" onclick="app.logout()" title="Выйти">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M11.95 16.5c-3.1 0-6.1-1.5-7.9-3.9a1 1 0 0 1-.05-1.2l2.3-3c.4-.5 1.1-.6 1.6-.3l3.5 2.1c.4.3.7.8.5 1.3l-.9 3.2c.3.1.6.2.95.2s.65-.1.95-.2l-.9-3.2c-.2-.5.1-1 .5-1.3l3.5-2.1c.5-.3 1.2-.2 1.6.3l2.3 3a1 1 0 0 1 0 1.2c-1.8 2.4-4.8 3.9-7.95 3.9Z" fill="white"/></svg>
                 </button>
             </div>
         </div>
 
-        <!-- CHAT -->
         <div class="chat-panel">
-            <div class="chat-header">ЧАТ КОМНАТЫ</div>
+            <div class="chat-header"># general</div>
             <div id="messages"></div>
             <div class="chat-input-area">
                 <div class="chat-input-box">
-                    <input type="text" class="chat-input" id="msg-in" placeholder="Написать сообщение..." autocomplete="off">
+                    <input type="text" id="msg-in" class="chat-input" placeholder="Сообщение..." autocomplete="off">
                     <button class="send-btn" onclick="app.sendText()">➤</button>
                 </div>
             </div>
@@ -315,49 +303,167 @@
     </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════
-// ⚙️ CONFIG
-// ═══════════════════════════════════════════════════════════════════
-// FIX: Используем правильный порт 8000 и путь /mqtt для вебсокетов
-const MQTT_BROKER = 'wss://broker.hivemq.com:8000/mqtt';
+const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
 const ROOM_ID = 'pitbull-pro-v3-stable';
+const ICE_SERVERS = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] };
+
+// ═══════════════════════════════════════════════════════════════════
+// 🎯 БЕЗОПАСНЫЙ WORKLET КОД (ОТКЛЮЧЕН СПЕКТРАЛЬНЫЙ АНАЛИЗ)
+// ═══════════════════════════════════════════════════════════════════
+
+const WORKLET_CODE = `
+class NoiseGateProcessor extends AudioWorkletProcessor {
+    constructor() {
+        super();
+        this.threshold = -60; // Более мягкий порог (было -50)
+        this.attackTime = 0.005;
+        this.releaseTime = 0.1; // Плавное затухание
+        this.envelope = 0;
+    }
+
+    process(inputs, outputs, parameters) {
+        const input = inputs[0];
+        const output = outputs[0];
+        
+        if (!input || !input[0] || !output) return true;
+
+        for (let channel = 0; channel < input.length; channel++) {
+            const inputChannel = input[channel];
+            const outputChannel = output[channel];
+
+            for (let i = 0; i < inputChannel.length; i++) {
+                const sample = inputChannel[i];
+                const sampleDb = 20 * Math.log10(Math.abs(sample) + 1e-6);
+
+                // Если звук громче порога (голос) -> открываем gate
+                if (sampleDb > this.threshold) {
+                    this.envelope += (1 - this.envelope) * this.attackTime;
+                } else {
+                    // Если тише (клава) -> закрываем
+                    this.envelope += (0 - this.envelope) * this.releaseTime;
+                }
+
+                outputChannel[i] = sample * this.envelope;
+            }
+        }
+        return true;
+    }
+}
+
+class VoiceCompressorProcessor extends AudioWorkletProcessor {
+    constructor() {
+        super();
+        this.threshold = 0.4;
+        this.ratio = 3;
+        this.envelope = 0;
+        this.attackTime = 0.003;
+        this.releaseTime = 0.25;
+    }
+
+    process(inputs, outputs, parameters) {
+        const input = inputs[0];
+        const output = outputs[0];
+        
+        if (!input || !input[0] || !output) return true;
+
+        for (let channel = 0; channel < input.length; channel++) {
+            const inputChannel = input[channel];
+            const outputChannel = output[channel];
+
+            for (let i = 0; i < inputChannel.length; i++) {
+                const sample = inputChannel[i];
+                const absLevel = Math.abs(sample);
+
+                if (absLevel > this.envelope) {
+                    this.envelope += (absLevel - this.envelope) * this.attackTime;
+                } else {
+                    this.envelope += (absLevel - this.envelope) * this.releaseTime;
+                }
+
+                let gain = 1.0;
+                if (this.envelope > this.threshold) {
+                    const excess = this.envelope - this.threshold;
+                    const compressed = excess / this.ratio;
+                    gain = (this.threshold + compressed) / (this.envelope + 1e-6);
+                }
+
+                outputChannel[i] = sample * gain;
+            }
+        }
+        return true;
+    }
+}
+
+registerProcessor('noise-gate-processor', NoiseGateProcessor);
+registerProcessor('voice-compressor', VoiceCompressorProcessor);
+`;
+
 const ULTRA_AUDIO_CONSTRAINTS = {
-    echoCancellation: true,
-    noiseSuppression: true, 
-    autoGainControl: true,
-    sampleRate: 48000,
-    channelCount: 1
+    echoCancellation: { ideal: true },
+    autoGainControl: { ideal: true },
+    noiseSuppression: { ideal: true }, // Используем встроенный NS браузера как основу
+    googEchoCancellation: { ideal: true },
+    googAutoGainControl: { ideal: true },
+    googNoiseSuppression: { ideal: true },
+    googHighpassFilter: { ideal: true },
+    googTypingNoiseDetection: { ideal: true },
+    channelCount: { ideal: 1 },
+    sampleRate: { ideal: 48000 }
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// 🎤 ПРИМЕНЕНИЕ ФИЛЬТРОВ
+// ═══════════════════════════════════════════════════════════════════
 
 async function applyUltraNoiseSuppressionPipeline(originalStream) {
     try {
-        console.log('⏳ Загрузка AI-шумоподавления (RNNoise)...');
+        const audioContext = new AudioContext({ sampleRate: 48000 });
         
-        // 1. Динамический импорт модуля (решает проблему SyntaxError)
-        // Мы загружаем модуль напрямую, минуя глобальную область видимости
-        const module = await import('https://cdn.jsdelivr.net/npm/@shiguredo/noise-suppression@latest/dist/noise_suppression.mjs');
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+
+        const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
+        const workletUrl = URL.createObjectURL(blob);
         
-        // Получаем класс процессора из модуля
-        const NoiseSuppressionProcessor = module.NoiseSuppressionProcessor;
+        await audioContext.audioWorklet.addModule(workletUrl);
 
-        console.log('🤖 AI Шумоподавление: Активация...');
-        const track = originalStream.getAudioTracks()[0];
-        if (!track) throw new Error('Аудиодорожка не найдена');
-
-        // 2. Инициализируем процессор
-        // Важно: указываем путь к папке с WASM файлами (без самого js файла)
-        const assetsPath = 'https://cdn.jsdelivr.net/npm/@shiguredo/noise-suppression@latest/dist';
-        const processor = new NoiseSuppressionProcessor(assetsPath);
-
-        // 3. Запускаем обработку
-        const processedTrack = await processor.startProcessing(track);
+        const source = audioContext.createMediaStreamSource(originalStream);
         
-        console.log('✅ AI Шумоподавление: ВКЛЮЧЕНО (Только голос)');
-        return new MediaStream([processedTrack]);
+        // 1. Noise Gate (отсекает клавиатуру)
+        const noiseGate = new AudioWorkletNode(audioContext, 'noise-gate-processor');
+        
+        // 2. Highpass (убирает гул)
+        const highpass = audioContext.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = 85; 
+        highpass.Q.value = 0.5;
+        
+        // 3. Compressor Worklet (выравнивает голос)
+        const compressor = new AudioWorkletNode(audioContext, 'voice-compressor');
+        
+        // 4. Limiter (защита ушей)
+        const limiter = audioContext.createDynamicsCompressor();
+        limiter.threshold.value = -2;
+        limiter.ratio.value = 15;
+        limiter.attack.value = 0.005;
+        limiter.release.value = 0.05;
 
+        const destination = audioContext.createMediaStreamDestination();
+
+        source
+            .connect(highpass)      // Сначала фильтр частот
+            .connect(noiseGate)     // Потом гейт (чтобы не открывался от гула)
+            .connect(compressor)    // Потом компрессор
+            .connect(limiter)       // В конце лимитер
+            .connect(destination);
+
+        console.log('✅ CLEAN AUDIO ACTIVATED');
+        return destination.stream;
+        
     } catch (error) {
-        console.warn('⚠️ Ошибка AI шумоподавления (используется обычный микрофон):', error);
-        return originalStream;
+        console.warn('⚠️ Fallback to basic audio:', error);
+        return originalStream; 
     }
 }
 
@@ -588,313 +694,340 @@ class App {
         playLeaveSound();
     }
 
-    // --- WebRTC (P2P) ---
-    async createPeer(targetId, initiator) {
+    createPeer(targetId, initiator) {
         if(this.peers[targetId]) return;
-
-        const pc = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        });
-
+        const pc = new RTCPeerConnection(ICE_SERVERS);
         this.peers[targetId] = pc;
 
-        // Add Local Tracks
         if(this.localAudioStream) {
-            this.localAudioStream.getTracks().forEach(track => pc.addTrack(track, this.localAudioStream));
+            this.localAudioStream.getTracks().forEach(t => pc.addTrack(t, this.localAudioStream));
         }
         if(this.localVideoStream) {
-            this.localVideoStream.getTracks().forEach(track => pc.addTrack(track, this.localVideoStream));
+            this.localVideoStream.getTracks().forEach(t => pc.addTrack(t, this.localVideoStream));
         }
 
-        // On Remote Track
-        pc.ontrack = (event) => {
-            const stream = event.streams[0];
-            const kind = event.track.kind;
+        pc.onicecandidate = e => {
+            if(e.candidate) this.sendSig(targetId, { type: 'candidate', candidate: e.candidate });
+        };
 
-            if(kind === 'audio') {
-                let aud = this.audioElements[targetId];
-                if(!aud) {
-                    aud = new Audio();
-                    aud.autoplay = true;
-                    this.audioElements[targetId] = aud;
-                }
+        pc.ontrack = e => {
+            const stream = e.streams[0];
+            if(e.track.kind === 'audio') {
+                const aud = new Audio();
                 aud.srcObject = stream;
-                this.setupVAD(stream, targetId); // Remote VAD
-            }
-            
-            if(kind === 'video') {
-                const card = document.querySelector(`.voice-card[data-uid="${targetId}"]`);
-                if(card) {
-                    let vid = card.querySelector('video');
-                    if(!vid) {
-                        vid = document.createElement('video');
-                        vid.className = 'card-video';
-                        vid.autoplay = true;
-                        vid.playsInline = true;
-                        card.appendChild(vid);
-                        card.classList.add('has-video');
-                    }
-                    vid.srcObject = stream;
+                
+                // FIX: Chrome autoplay policy handling
+                const playPromise = aud.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log('Autoplay prevented. Waiting for interaction.');
+                        // Обычно взаимодействие уже есть, но на всякий случай
+                    });
                 }
+                
+                document.body.appendChild(aud);
+                this.audioElements[targetId] = aud; 
+                this.setupVAD(stream, targetId);
+            } 
+            else if(e.track.kind === 'video') {
+                this.attachVideoToCard(targetId, stream);
             }
         };
 
-        pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                this.client.publish(`${ROOM_ID}/signal/${targetId}`, JSON.stringify({
-                    type: 'candidate',
-                    candidate: event.candidate,
-                    from: this.myId
-                }));
+        pc.oniceconnectionstatechange = () => {
+            if(pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                this.removeRemoteUser(targetId);
             }
-        };
+        }
 
-        if (initiator) {
+        if(initiator) {
+            this.renegotiate(targetId);
+        }
+    }
+
+    async renegotiate(targetId) {
+        const pc = this.peers[targetId];
+        if(!pc) return;
+        try {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            this.client.publish(`${ROOM_ID}/signal/${targetId}`, JSON.stringify({
-                type: 'offer',
-                sdp: offer,
-                from: this.myId
-            }));
-        }
-    }
-
-    async handleSignal(data) {
-        if(data.from === this.myId) return;
-        
-        // Auto-create peer if not exists (for receiver)
-        if(!this.peers[data.from]) await this.createPeer(data.from, false);
-        
-        const pc = this.peers[data.from];
-
-        try {
-            if (data.type === 'offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                this.client.publish(`${ROOM_ID}/signal/${data.from}`, JSON.stringify({
-                    type: 'answer',
-                    sdp: answer,
-                    from: this.myId
-                }));
-            } 
-            else if (data.type === 'answer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            } 
-            else if (data.type === 'candidate') {
-                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-            }
-        } catch(e) { console.error("Signal Error:", e); }
-    }
-
-    // --- CONTROLS ---
-    toggleMic() {
-        if(this.localAudioStream) {
-            this.isMuted = !this.isMuted;
-            this.localAudioStream.getAudioTracks()[0].enabled = !this.isMuted;
-            document.getElementById('btn-mic').classList.toggle('muted', this.isMuted);
-            this.announce('online'); // Update status
-        }
-    }
-
-    async toggleCamera() {
-        const btn = document.getElementById('btn-camera');
-        
-        if(this.localVideoStream) {
-            // STOP
-            this.localVideoStream.getTracks().forEach(t => t.stop());
-            this.localVideoStream = null;
-            btn.classList.remove('on');
-            
-            // Remove from peers
-            // (Simplification: renegotiation needed for full remove, but we just stop sending)
-            this.updateMyCardVideo(null);
-        } else {
-            // START
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                this.localVideoStream = stream;
-                btn.classList.add('on');
-                this.updateMyCardVideo(stream);
-
-                // Add to peers
-                Object.values(this.peers).forEach(pc => {
-                    stream.getTracks().forEach(t => pc.addTrack(t, stream));
-                    // Note: In real production, need to renegotiate here (createOffer again)
-                });
-            } catch(e) { console.error(e); }
-        }
-    }
-
-    async shareScreen() {
-        if(this.isScreenOn) return; // Simple toggle off not implemented for screen
-        try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            this.localVideoStream = stream; // Replace camera
-            document.getElementById('btn-screen').classList.add('on');
-            this.updateMyCardVideo(stream);
-            
-            stream.getVideoTracks()[0].onended = () => {
-                document.getElementById('btn-screen').classList.remove('on');
-                this.isScreenOn = false;
-            };
+            this.sendSig(targetId, { type: 'sdp', sdp: pc.localDescription });
         } catch(e) { console.error(e); }
     }
 
-    // --- UI ---
-    updateGrid() {
-        const grid = document.getElementById('grid');
-        const userList = [ { id: this.myId, user: this.myProfile, isMe: true }, ...Object.entries(this.users).map(([k,v]) => ({ id: k, user: v })) ];
+    async handleSignal(data) {
+        const { senderId, payload } = data;
+        if(!this.peers[senderId]) this.createPeer(senderId, false);
+        const pc = this.peers[senderId];
 
-        userList.forEach(u => {
-            let card = grid.querySelector(`.voice-card[data-uid="${u.id}"]`);
-            if(!card) {
-                card = document.createElement('div');
-                card.className = 'voice-card';
-                card.dataset.uid = u.id;
-                card.innerHTML = `
-                    <div class="expand-hint">⤢</div>
-                    <button class="close-zoom-btn">×</button>
-                    <div class="card-avatar" style="background-image: url('${u.user.avatar}')"></div>
-                    <div class="card-name">${u.user.name}</div>
-                    <div class="volume-control">
-                        <span class="volume-icon">🔊</span>
-                        <input type="range" class="volume-slider" min="0" max="1" step="0.1" value="1">
-                    </div>
-                `;
+        try {
+            if(payload.type === 'sdp') {
+                if(pc.signalingState !== "stable" && payload.sdp.type === "offer") {
+                     await Promise.all([
+                        pc.setLocalDescription({type: "rollback"}),
+                        pc.setRemoteDescription(payload.sdp)
+                     ]);
+                } else {
+                    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                }
                 
-                // Zoom click
-                card.addEventListener('click', (e) => {
-                    if(e.target.closest('.volume-control')) return;
-                    if(e.target.closest('.close-zoom-btn')) {
-                        card.classList.remove('expanded');
-                        return;
-                    }
-                    // Collapse others
-                    document.querySelectorAll('.voice-card.expanded').forEach(c => c.classList.remove('expanded'));
-                    card.classList.add('expanded');
-                });
-                
-                // Volume
-                card.querySelector('.volume-slider').addEventListener('input', (e) => {
-                    const vol = e.target.value;
-                    if(u.isMe) return; // No self volume
-                    if(this.audioElements[u.id]) this.audioElements[u.id].volume = vol;
-                });
+                if(payload.sdp.type === 'offer') {
+                    const ans = await pc.createAnswer();
+                    await pc.setLocalDescription(ans);
+                    this.sendSig(senderId, {type:'sdp', sdp:ans});
+                }
+            } else if(payload.type === 'candidate') {
+                await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            }
+        } catch(e) { console.warn("Signal error", e); }
+    }
 
-                grid.appendChild(card);
+    sendSig(target, payload) {
+        this.client.publish(`${ROOM_ID}/signal/${target}`, JSON.stringify({ senderId: this.myId, payload }));
+    }
+
+    toggleMic() {
+        if(!this.localAudioStream) return;
+        this.isMuted = !this.isMuted;
+        this.localAudioStream.getAudioTracks()[0].enabled = !this.isMuted;
+        
+        const btn = document.getElementById('btn-mic');
+        btn.classList.toggle('active', !this.isMuted);
+        btn.classList.toggle('muted', this.isMuted);
+        this.announce();
+    }
+
+    async toggleScreen() {
+        const btn = document.getElementById('btn-screen');
+        if(this.isScreenOn) {
+            this.stopVideo();
+            this.isScreenOn = false;
+            btn.classList.remove('on');
+        } else {
+            try {
+                this.localVideoStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                this.isScreenOn = true;
+                btn.classList.add('on');
+                
+                this.localVideoStream.getVideoTracks()[0].onended = () => this.toggleScreen();
+                this.broadcastVideo();
+            } catch(e) { console.log("Screen cancelled"); }
+        }
+    }
+
+    stopVideo() {
+        if(this.localVideoStream) {
+            this.localVideoStream.getTracks().forEach(t => t.stop());
+            this.localVideoStream = null;
+        }
+        this.hideLocalVideo();
+        Object.keys(this.peers).forEach(pid => {
+            const pc = this.peers[pid];
+            const senders = pc.getSenders();
+            const vidSender = senders.find(s => s.track && s.track.kind === 'video');
+            if(vidSender) pc.removeTrack(vidSender);
+            this.renegotiate(pid);
+        });
+    }
+
+    broadcastVideo() {
+        this.showLocalVideo();
+        const track = this.localVideoStream.getVideoTracks()[0];
+        
+        Object.keys(this.peers).forEach(pid => {
+            const pc = this.peers[pid];
+            const senders = pc.getSenders();
+            const vidSender = senders.find(s => s.track && s.track.kind === 'video');
+            
+            if(vidSender) {
+                vidSender.replaceTrack(track);
+            } else {
+                pc.addTrack(track, this.localVideoStream);
+                this.renegotiate(pid);
             }
         });
     }
 
-    updateMyCardVideo(stream) {
+    showLocalVideo() {
+        this.attachVideoToCard(this.myId, this.localVideoStream, true);
+    }
+    
+    hideLocalVideo() {
         const card = document.querySelector(`.voice-card[data-uid="${this.myId}"]`);
-        if(!card) return;
-        
-        let vid = card.querySelector('video');
-        if(stream) {
-            if(!vid) {
-                vid = document.createElement('video');
-                vid.className = 'card-video';
-                vid.muted = true; // My video always muted
-                vid.autoplay = true;
-                card.appendChild(vid);
-                card.classList.add('has-video');
-            }
-            vid.srcObject = stream;
-        } else {
-            if(vid) vid.remove();
+        if(card) {
             card.classList.remove('has-video');
+            const vid = card.querySelector('video');
+            if(vid) vid.srcObject = null;
         }
     }
 
-    // --- VAD (Visualizer) ---
-    setupVAD(stream, uid) {
-        if(!this.audioCtx) this.audioCtx = new AudioContext();
-        
-        // Simple VAD using Analyser
-        const src = this.audioCtx.createMediaStreamSource(stream);
-        const analyser = this.audioCtx.createAnalyser();
-        analyser.fftSize = 64;
-        src.connect(analyser); // Just for analysis, not output to destination (avoid self-echo)
-
-        const buffer = new Uint8Array(analyser.frequencyBinCount);
-        
-        const check = () => {
-            if(!document.querySelector(`.voice-card[data-uid="${uid}"]`)) return; // Stop if gone
-            analyser.getByteFrequencyData(buffer);
-            const sum = buffer.reduce((a,b) => a+b, 0);
-            const avg = sum / buffer.length;
-            
+    attachVideoToCard(uid, stream, isMuted=false) {
+        setTimeout(() => {
             const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
-            if(card) {
-                if(avg > 20) card.classList.add('speaking');
-                else card.classList.remove('speaking');
-                
-                // Dynamic gradient border or shadow could go here
+            if(!card) return;
+            
+            let vid = card.querySelector('video');
+            if(!vid) {
+                vid = document.createElement('video');
+                vid.className = 'card-video';
+                vid.autoplay = true;
+                vid.playsInline = true;
+                card.prepend(vid);
             }
-            requestAnimationFrame(check);
-        };
-        check();
+            
+            vid.srcObject = stream;
+            vid.muted = true;
+            card.classList.add('has-video');
+        }, 100);
+    }
+    
+    setVolume(uid, value) {
+        if(this.audioElements[uid]) {
+            this.audioElements[uid].volume = value / 100;
+        }
     }
 
-    // --- CHAT ---
+    toggleZoom(uid) {
+        const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+        if(!card) return;
+        
+        const already = document.querySelector('.voice-card.expanded');
+        if(already && already !== card) already.classList.remove('expanded');
+
+        card.classList.toggle('expanded');
+    }
+
+    updateGrid() {
+        const grid = document.getElementById('grid-users');
+        if(!document.querySelector(`.voice-card[data-uid="${this.myId}"]`)) {
+             this.renderCard(grid, this.myId, this.myProfile, true);
+        }
+
+        Object.keys(this.users).forEach(uid => {
+            if(!document.querySelector(`.voice-card[data-uid="${uid}"]`)) {
+                this.renderCard(grid, uid, this.users[uid], false);
+            }
+        });
+        applyGradients();
+    }
+
+    renderCard(container, uid, profile, isMe) {
+        const el = document.createElement('div');
+        el.className = 'voice-card';
+        el.setAttribute('data-uid', uid);
+        el.onclick = (e) => {
+            if(e.target.closest('.close-zoom-btn') || e.target.closest('.volume-control')) return;
+            this.toggleZoom(uid);
+        };
+
+        const volumeHTML = !isMe ? `
+            <div class="volume-control">
+                <span class="volume-icon">🔊</span>
+                <input type="range" class="volume-slider" min="0" max="200" value="100" 
+                       oninput="app.setVolume('${uid}', this.value)" onclick="event.stopPropagation()">
+            </div>
+        ` : '';
+
+        el.innerHTML = `
+            <div class="expand-hint">+</div>
+            <button class="close-zoom-btn" onclick="event.stopPropagation(); app.toggleZoom('${uid}')">✕</button>
+            ${volumeHTML}
+            <video class="card-video" autoplay playsinline muted></video>
+            <div class="card-avatar" style="background-image: url('${profile.avatar}')"></div>
+            <div class="card-name">${profile.name} ${isMe ? '(Вы)' : ''}</div>
+        `;
+        container.appendChild(el);
+    }
+
+    loadChatHistory() {
+        const saved = localStorage.getItem('dc_chat_history');
+        if(saved) {
+            this.chatHistory = JSON.parse(saved);
+            this.chatHistory.forEach(msg => this.renderChat(msg, false));
+        }
+    }
+    
+    saveChatHistory() {
+        if(this.chatHistory.length > 100) this.chatHistory = this.chatHistory.slice(-100);
+        localStorage.setItem('dc_chat_history', JSON.stringify(this.chatHistory));
+    }
+
     sendText() {
-        const input = document.getElementById('msg-in');
-        const text = input.value.trim();
-        if(!text) return;
-        
-        const msg = {
-            id: Date.now(),
-            from: this.myId,
-            name: this.myProfile.name,
-            ava: this.myProfile.avatar,
-            text: text
+        const inp = document.getElementById('msg-in');
+        const txt = inp.value.trim();
+        if(!txt) return;
+        const payload = { 
+            name: this.myProfile.name, avatar: this.myProfile.avatar, 
+            text: txt, time: new Date().toLocaleTimeString().slice(0,5)
         };
-        
-        this.client.publish(`${ROOM_ID}/chat`, JSON.stringify(msg));
-        input.value = '';
+        this.client.publish(`${ROOM_ID}/chat`, JSON.stringify(payload));
+        inp.value = '';
     }
 
-    handleIncomingChat(msg) {
-        if(this.chatHistory.some(m => m.id === msg.id)) return;
-        this.chatHistory.push(msg);
-        if(this.chatHistory.length > 50) this.chatHistory.shift();
-        
-        this.renderMessage(msg);
+    handleIncomingChat(data) {
+        this.chatHistory.push(data);
+        this.saveChatHistory();
+        this.renderChat(data, false);
     }
 
-    renderMessage(msg) {
-        const box = document.getElementById('messages');
+    renderChat(d) {
+        const list = document.getElementById('messages');
         const div = document.createElement('div');
         div.className = 'msg';
         div.innerHTML = `
-            <div class="msg-ava" style="background-image: url('${msg.ava}')"></div>
+            <div class="msg-ava" style="background-image: url('${d.avatar}')"></div>
             <div class="msg-body">
-                <div class="msg-top">
-                    <span class="msg-user">${msg.name}</span>
-                    <span class="msg-time">${new Date(msg.id).toLocaleTimeString().slice(0,5)}</span>
-                </div>
-                <div class="msg-text">${msg.text}</div>
+                <div class="msg-top"><span class="msg-user">${d.name}</span><span class="msg-time">${d.time}</span></div>
+                <div class="msg-text">${d.text.replace(/</g, "&lt;")}</div>
             </div>
         `;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+        list.appendChild(div);
+        list.scrollTop = list.scrollHeight;
     }
-    
-    loadChatHistory() {
-        // In real app, request history from peers or backend. 
-        // Here we just start fresh or could store in LocalStorage.
+
+    setupVAD(stream, uid) {
+        if(!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(this.audioCtx.state==='suspended') this.audioCtx.resume();
+        const src = this.audioCtx.createMediaStreamSource(stream);
+        const anl = this.audioCtx.createAnalyser();
+        anl.fftSize = 128;
+        src.connect(anl);
+        const data = new Uint8Array(anl.frequencyBinCount);
+        const loop = () => {
+            anl.getByteFrequencyData(data);
+            let sum = 0; for(let i=0; i<data.length; i++) sum+=data[i];
+            const avg = sum/data.length;
+            const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+            if(card) {
+                if(avg > 12) card.classList.add('speaking');
+                else card.classList.remove('speaking');
+            }
+            requestAnimationFrame(loop);
+        };
+        loop();
     }
 }
 
 const app = new App();
 app.init();
 
+function applyGradients() {
+  const cards = document.querySelectorAll('.voice-card');
+  const gradients = [
+    'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%)',
+    'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+    'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+  ];
+  cards.forEach(card => {
+    if(!card.style.getPropertyValue('--user-gradient')) {
+        card.style.setProperty('--user-gradient', gradients[Math.floor(Math.random() * gradients.length)]);
+    }
+  });
+}
+const observer = new MutationObserver(applyGradients);
+if(document.getElementById('grid-users')) observer.observe(document.getElementById('grid-users'), { childList: true });
 </script>
 </body>
 </html>
