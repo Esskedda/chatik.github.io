@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><ellipse cx='32' cy='32' rx='28' ry='30' fill='%23000'/><ellipse cx='32' cy='37' rx='14' ry='16' fill='%23000'/><ellipse cx='24' cy='28' rx='4' ry='6' fill='%23fff'/><ellipse cx='40' cy='28' rx='4' ry='6' fill='%23fff'/></svg>">
-    <title>ПИТБУЛЬЧИКИ ЧАТ 2/0</title>
+    <title>ПИТБУЛЬЧИКИ ЧАТ 3/0</title>
     <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
     
     <style>
@@ -308,33 +308,14 @@ const ROOM_ID = 'pitbull-pro-v2-ultra';
 const ICE_SERVERS = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] };
 
 // ═══════════════════════════════════════════════════════════════════
-// 🎯 МАКСИМАЛЬНОЕ ШУМОПОДАВЛЕНИЕ - УРОВЕНЬ ПРОМЫШЛЕННЫЙ
+// 🎯 КОД ШУМОПОДАВЛЕНИЯ ВНУТРИ СТРОКИ (ДЛЯ WORKLET)
 // ═══════════════════════════════════════════════════════════════════
 
-const ULTRA_AUDIO_CONSTRAINTS = {
-    echoCancellation: { ideal: true },
-    autoGainControl: { ideal: true },
-    noiseSuppression: { ideal: true },
-    googEchoCancellation: { ideal: true },
-    googAutoGainControl: { ideal: true },
-    googNoiseSuppression: { ideal: true },
-    googHighpassFilter: { ideal: true },
-    googAudioMirroring: false,
-    googTypingNoiseDetection: { ideal: true },
-    channelCount: { ideal: 1 },
-    sampleRate: { ideal: 48000 },
-    sampleSize: { ideal: 16 },
-    latency: { ideal: 0.01 }
-};
-
-// ═══════════════════════════════════════════════════════════════════
-// 🔊 NOISE GATE - Убирает тихие звуки (клавиатура, мышка)
-// ═══════════════════════════════════════════════════════════════════
-
+const WORKLET_CODE = `
 class NoiseGateProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
-        this.threshold = -50; // dB
+        this.threshold = -50; 
         this.attackTime = 0.001;
         this.releaseTime = 0.05;
         this.gateOpen = false;
@@ -367,10 +348,6 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
         return true;
     }
 }
-
-// ═══════════════════════════════════════════════════════════════════
-// 🧠 SPECTRAL NOISE SUPPRESSION - AI-подобное вычитание шума
-// ═══════════════════════════════════════════════════════════════════
 
 class SpectralNoiseSuppressionProcessor extends AudioWorkletProcessor {
     constructor() {
@@ -414,10 +391,6 @@ class SpectralNoiseSuppressionProcessor extends AudioWorkletProcessor {
         return true;
     }
 }
-
-// ═══════════════════════════════════════════════════════════════════
-// 🎚️ DYNAMIC COMPRESSOR - Выравнивает громкость голоса
-// ═══════════════════════════════════════════════════════════════════
 
 class VoiceCompressorProcessor extends AudioWorkletProcessor {
     constructor() {
@@ -463,54 +436,59 @@ class VoiceCompressorProcessor extends AudioWorkletProcessor {
     }
 }
 
-// Регистрация AudioWorklet процессоров
-if (typeof registerProcessor !== 'undefined') {
-    registerProcessor('noise-gate-processor', NoiseGateProcessor);
-    registerProcessor('spectral-suppressor', SpectralNoiseSuppressionProcessor);
-    registerProcessor('voice-compressor', VoiceCompressorProcessor);
-}
+registerProcessor('noise-gate-processor', NoiseGateProcessor);
+registerProcessor('spectral-suppressor', SpectralNoiseSuppressionProcessor);
+registerProcessor('voice-compressor', VoiceCompressorProcessor);
+`;
+
+const ULTRA_AUDIO_CONSTRAINTS = {
+    echoCancellation: { ideal: true },
+    autoGainControl: { ideal: true },
+    noiseSuppression: { ideal: true },
+    googEchoCancellation: { ideal: true },
+    googAutoGainControl: { ideal: true },
+    googNoiseSuppression: { ideal: true },
+    googHighpassFilter: { ideal: true },
+    googAudioMirroring: false,
+    googTypingNoiseDetection: { ideal: true },
+    channelCount: { ideal: 1 },
+    sampleRate: { ideal: 48000 },
+    sampleSize: { ideal: 16 },
+    latency: { ideal: 0.01 }
+};
 
 // ═══════════════════════════════════════════════════════════════════
-// 🎤 ПРИМЕНЕНИЕ ВСЕХ ФИЛЬТРОВ К МИКРОФОНУ
+// 🎤 ПРИМЕНЕНИЕ ФИЛЬТРОВ
 // ═══════════════════════════════════════════════════════════════════
 
 async function applyUltraNoiseSuppressionPipeline(originalStream) {
     try {
         const audioContext = new AudioContext({ sampleRate: 48000 });
         
-        // Добавляем наши процессоры
-        const workletCode = `
-            ${NoiseGateProcessor.toString()}
-            ${SpectralNoiseSuppressionProcessor.toString()}
-            ${VoiceCompressorProcessor.toString()}
-            registerProcessor('noise-gate-processor', NoiseGateProcessor);
-            registerProcessor('spectral-suppressor', SpectralNoiseSuppressionProcessor);
-            registerProcessor('voice-compressor', VoiceCompressorProcessor);
-        `;
-        
-        const blob = new Blob([workletCode], { type: 'application/javascript' });
+        // Создаем Blob из строки кода и загружаем его
+        const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
         const workletUrl = URL.createObjectURL(blob);
         
         await audioContext.audioWorklet.addModule(workletUrl);
 
         const source = audioContext.createMediaStreamSource(originalStream);
         
-        // 1️⃣ Noise Gate (убирает тихие звуки клавиш)
+        // 1. Noise Gate
         const noiseGate = new AudioWorkletNode(audioContext, 'noise-gate-processor');
         
-        // 2️⃣ Spectral Suppression (убирает фоновый шум)
+        // 2. Spectral
         const spectralSuppressor = new AudioWorkletNode(audioContext, 'spectral-suppressor');
         
-        // 3️⃣ Highpass фильтр (убирает низкие частоты: гул, вибрация стола)
+        // 3. Highpass
         const highpass = audioContext.createBiquadFilter();
         highpass.type = 'highpass';
         highpass.frequency.value = 100;
         highpass.Q.value = 0.7;
         
-        // 4️⃣ Компрессор (выравнивает громкость голоса)
+        // 4. Compressor Worklet
         const compressor = new AudioWorkletNode(audioContext, 'voice-compressor');
         
-        // 5️⃣ Дополнительный встроенный компрессор
+        // 5. Native Dynamics
         const dynamicsCompressor = audioContext.createDynamicsCompressor();
         dynamicsCompressor.threshold.value = -30;
         dynamicsCompressor.knee.value = 15;
@@ -518,7 +496,7 @@ async function applyUltraNoiseSuppressionPipeline(originalStream) {
         dynamicsCompressor.attack.value = 0.003;
         dynamicsCompressor.release.value = 0.25;
         
-        // 6️⃣ Limiter (защита от перегрузки)
+        // 6. Limiter
         const limiter = audioContext.createDynamicsCompressor();
         limiter.threshold.value = -1;
         limiter.knee.value = 0;
@@ -528,7 +506,6 @@ async function applyUltraNoiseSuppressionPipeline(originalStream) {
 
         const destination = audioContext.createMediaStreamDestination();
 
-        // Собираем цепочку обработки
         source
             .connect(noiseGate)
             .connect(spectralSuppressor)
@@ -538,40 +515,12 @@ async function applyUltraNoiseSuppressionPipeline(originalStream) {
             .connect(limiter)
             .connect(destination);
 
-        console.log('✅ Максимальное шумоподавление активировано!');
+        console.log('✅ ULTRA NS ACTIVATED');
         return destination.stream;
         
     } catch (error) {
-        console.warn('⚠️ AudioWorklet не поддерживается, используем базовую обработку:', error);
-        return applyBasicNoiseReduction(originalStream);
-    }
-}
-
-// Запасной вариант для старых браузеров
-function applyBasicNoiseReduction(stream) {
-    try {
-        const audioContext = new AudioContext({ sampleRate: 48000 });
-        const source = audioContext.createMediaStreamSource(stream);
-        
-        const highpass = audioContext.createBiquadFilter();
-        highpass.type = 'highpass';
-        highpass.frequency.value = 100;
-        
-        const compressor = audioContext.createDynamicsCompressor();
-        compressor.threshold.value = -30;
-        compressor.knee.value = 20;
-        compressor.ratio.value = 12;
-        compressor.attack.value = 0.003;
-        compressor.release.value = 0.25;
-        
-        const destination = audioContext.createMediaStreamDestination();
-        source.connect(highpass).connect(compressor).connect(destination);
-        
-        console.log('✅ Базовое шумоподавление активировано');
-        return destination.stream;
-    } catch (e) {
-        console.warn('⚠️ Обработка недоступна, используем оригинальный поток');
-        return stream;
+        console.warn('⚠️ Fallback to basic NS:', error);
+        return originalStream; 
     }
 }
 
@@ -606,7 +555,7 @@ function playLeaveSound() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 🚀 ГЛАВНОЕ ПРИЛОЖЕНИЕ
+// 🚀 APP
 // ═══════════════════════════════════════════════════════════════════
 
 class App {
@@ -678,23 +627,18 @@ class App {
         document.getElementById('app-layout').classList.remove('hidden');
 
         try {
-            console.log('🎤 Запрашиваю доступ к микрофону с максимальным шумоподавлением...');
-            
+            console.log('🎤 Requesting mic...');
             const rawStream = await navigator.mediaDevices.getUserMedia({ 
                 audio: ULTRA_AUDIO_CONSTRAINTS,
                 video: false
             });
             
-            console.log('✅ Микрофон получен, применяю AI-фильтры...');
-            
-            // Применяем всю цепочку обработки
+            console.log('✅ Mic OK. Applying AI...');
             this.localAudioStream = await applyUltraNoiseSuppressionPipeline(rawStream);
-            
-            console.log('✅ Шумоподавление применено! Клавиатура и мышь не слышны.');
             
             this.setupVAD(this.localAudioStream, this.myId);
         } catch(e) { 
-            console.error("❌ Ошибка микрофона:", e); 
+            console.error("❌ Mic Error:", e); 
             alert("Ошибка микрофона! Проверьте разрешения.");
         }
 
