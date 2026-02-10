@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ПИТБУЛЬЧИКИ: DIRECT AUDIO</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><ellipse cx='32' cy='32' rx='28' ry='30' fill='%23000'/><ellipse cx='32' cy='37' rx='14' ry='16' fill='%23000'/><ellipse cx='24' cy='28' rx='4' ry='6' fill='%23fff'/><ellipse cx='40' cy='28' rx='4' ry='6' fill='%23fff'/></svg>">
+    <title>ПИТБУЛЬЧИКИ</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     
     <style>
@@ -11,6 +12,7 @@
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.1);
             --text-main: #ffffff;
+            --text-muted: #a1a1aa;
             --primary-gradient: linear-gradient(135deg, #00C6FB 0%, #005BEA 100%);
             --danger-gradient: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);
             --success-color: #00f260;
@@ -29,24 +31,39 @@
             animation: gradientShift 30s ease infinite; 
         }
 
-        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 0;
+        }
 
         * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        .icon { width: 24px; height: 24px; fill: currentColor; }
+        .icon { width: 24px; height: 24px; fill: currentColor; filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)); }
         .hidden { display: none !important; }
 
-        /* --- UI ELEMENTS --- */
-        #login-screen { position: relative; z-index: 10; display: flex; height: 100vh; align-items: center; justify-content: center; }
+        /* --- LOGIN --- */
+        #login-screen {
+            position: relative; z-index: 10;
+            display: flex; height: 100vh; align-items: center; justify-content: center;
+        }
         .login-card {
             width: 100%; max-width: 380px; padding: 40px; border-radius: var(--radius-lg);
             text-align: center; background: rgba(20, 20, 30, 0.6); border: 1px solid rgba(255,255,255,0.1);
             backdrop-filter: blur(40px); animation: float 6s ease-in-out infinite;
         }
+        @keyframes float { 0% {transform: translateY(0px);} 50% {transform: translateY(-10px);} 100% {transform: translateY(0px);} }
         .avatar-upload {
             width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 25px; 
             background-size: cover; cursor: pointer; border: 2px solid rgba(255,255,255,0.1); 
-            background-color: rgba(255,255,255,0.05);
+            background-color: rgba(255,255,255,0.05); transition: 0.3s;
         }
+        .avatar-upload:hover { transform: scale(1.05); border-color: #fff; }
         input.discord-input {
             background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
             padding: 14px; color: white; width: 100%; border-radius: var(--radius-sm);
@@ -55,10 +72,16 @@
         .btn-discord {
             background: var(--primary-gradient); color: white; border: none; width: 100%;
             padding: 14px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 198, 251, 0.3);
+            transition: 0.3s; box-shadow: 0 0 20px rgba(0, 198, 251, 0.3);
+        }
+        .btn-discord:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+        /* --- LAYOUT --- */
+        #app-layout {
+            position: relative; z-index: 5; display: flex; height: 100vh; width: 100%;
+            padding: 20px; gap: 20px;
         }
 
-        #app-layout { position: relative; z-index: 5; display: flex; height: 100vh; width: 100%; padding: 20px; gap: 20px; }
         .stage-area {
             flex: 1; display: flex; flex-direction: column;
             border-radius: var(--radius-lg); overflow: hidden; position: relative;
@@ -67,78 +90,180 @@
         }
         .stage-header {
             padding: 20px 24px; font-weight: 600; color: white; font-size: 14px;
-            display: flex; justify-content: space-between; align-items: center; text-transform: uppercase;
+            display: flex; justify-content: space-between; align-items: center;
+            text-transform: uppercase; opacity: 0.8; z-index: 10;
         }
         .stage-grid {
-            flex: 1; padding: 20px; overflow-y: auto; display: grid; 
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            grid-auto-rows: 240px; gap: 20px; align-content: start;
+            grid-auto-rows: 200px; gap: 20px; align-content: start;
+            position: relative;
         }
 
+        /* --- CARDS --- */
         .voice-card {
             background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-lg);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            position: relative; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;
-            transition: 0.2s;
+            position: relative; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid rgba(255,255,255,0.05); cursor: pointer; overflow: hidden;
         }
+        .voice-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        
         .voice-card::before {
             content: ''; position: absolute; inset: 0;
             background: var(--user-gradient, transparent); opacity: 0.15; z-index: 0;
+            transition: opacity 0.3s;
         }
+
+        .voice-card.expanded .expand-hint { opacity: 0 !important; }
+
+        /* EXPANDED */
+        .voice-card.expanded {
+            position: absolute; 
+            top: 10px; left: 10px; right: 10px; bottom: 80px;
+            z-index: 100;
+            transform: none !important;
+            box-shadow: 0 0 100px rgba(0,0,0,0.8);
+            border-color: rgba(255,255,255,0.3);
+            background: #111;
+        }
+        
+        .expand-hint {
+            position: absolute; top: 10px; right: 10px; z-index: 10;
+            background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 50%;
+            opacity: 0; transition: 0.2s; pointer-events: none;
+        }
+        .voice-card:hover .expand-hint { opacity: 1; }
+
+        .close-zoom-btn {
+            position: absolute; top: 20px; right: 20px; z-index: 101;
+            background: rgba(0,0,0,0.6); color: white; border: none;
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+            display: none; font-size: 20px;
+        }
+        .voice-card.expanded .close-zoom-btn { display: flex; align-items: center; justify-content: center; }
+
+        /* VIDEO */
+        .card-video {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: contain; z-index: 1; display: none; background: #000;
+        }
+        .voice-card.has-video .card-video { display: block; }
+        
+        .voice-card.has-video .card-avatar { 
+            transform: scale(0.5); opacity: 0.8; position: absolute; bottom: 10px; left: 10px; 
+            width: 40px; height: 40px; margin: 0; z-index: 2;
+        }
+        .voice-card.expanded .card-avatar { bottom: 30px; left: 30px; transform: scale(0.8); }
+        
+        .voice-card.has-video .card-name {
+            position: absolute; bottom: 10px; left: 60px; z-index: 2; 
+            background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px;
+            margin: 0; font-size: 12px;
+        }
+        .voice-card.expanded .card-name { bottom: 40px; left: 80px; font-size: 16px; padding: 8px 16px; }
+
         .card-avatar {
             width: 80px; height: 80px; border-radius: 40%; 
             background-size: cover; background-color: #000; position: relative; z-index: 2;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3); transition: 0.1s;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
         }
-        .card-name { font-weight: 500; color: white; font-size: 15px; margin-top: 16px; z-index: 2; }
-        /* Анимация разговора */
-        .voice-card.speaking .card-avatar { 
-            box-shadow: 0 0 0 4px var(--success-color); 
-            transform: scale(1.1);
+        .card-name {
+            font-weight: 500; color: white; font-size: 15px; margin-top: 16px; z-index: 2;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
+        .voice-card.speaking .card-avatar { box-shadow: 0 0 30px var(--success-color); border: 2px solid var(--success-color); }
+
+        /* VOLUME CONTROL */
+        .volume-control {
+            position: absolute; top: 10px; left: 10px; z-index: 10;
+            background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 20px;
+            opacity: 0; transition: 0.3s; pointer-events: none;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .voice-card:hover .volume-control { opacity: 1; pointer-events: auto; }
         
+        .volume-slider {
+            width: 80px; height: 4px; -webkit-appearance: none; appearance: none;
+            background: rgba(255,255,255,0.2); border-radius: 5px; cursor: pointer;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 12px; height: 12px; background: white; border-radius: 50%; cursor: pointer;
+        }
+        .volume-icon { font-size: 14px; }
+
+        /* --- CONTROLS --- */
         .bottom-controls {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            height: 70px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(25px);
-            border-radius: 40px; display: flex; align-items: center; gap: 15px; 
-            padding: 0 25px; z-index: 200;
+            height: 70px; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(25px);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 40px;
+            display: flex; align-items: center; justify-content: center; gap: 15px; 
+            padding: 0 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); z-index: 200;
         }
         .control-btn {
             width: 50px; height: 50px; border-radius: 50%; border: none;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.1); color: white; transition: 0.2s;
+            transition: 0.3s; position: relative;
         }
-        .control-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.2); }
-        .control-btn.active { background: white; color: black; }
+        .control-btn.active { background: rgba(255,255,255,0.1); color: white; }
+        .control-btn.active:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
+        .control-btn.muted { background: rgba(20,20,20,0.8); color: #ff4b2b; border: 1px solid #ff4b2b; }
+        .control-btn.on::after {
+            content: ''; position: absolute; top: 0; right: 0; width: 12px; height: 12px;
+            background: var(--success-color); border-radius: 50%; border: 2px solid #333;
+        }
         .control-btn.leave { background: var(--danger-gradient); }
 
-        #force-audio-btn {
-            display: none;
-            position: fixed; top: 20px; right: 20px; z-index: 999;
-            background: #ff4b2b; color: white; padding: 10px 20px;
-            border-radius: 20px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 0 20px rgba(255, 75, 43, 0.5); border: none;
-            animation: pulse 1s infinite;
+        /* --- CHAT --- */
+        .chat-panel {
+            width: 360px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border);
+            backdrop-filter: blur(30px); border-radius: var(--radius-lg);
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); z-index: 5;
         }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .chat-header {
+            height: 60px; padding: 0 20px; border-bottom: 1px solid var(--glass-border);
+            display: flex; align-items: center; font-weight: 600; color: white; background: rgba(255,255,255,0.02);
+        }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .msg { display: flex; gap: 12px; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+        .msg-ava { width: 36px; height: 36px; border-radius: 12px; background-size: cover; flex-shrink: 0; }
+        .msg-body { flex: 1; min-width: 0; }
+        .msg-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+        .msg-user { font-weight: 600; font-size: 13px; color: rgba(255,255,255,0.9); }
+        .msg-time { font-size: 10px; color: rgba(255,255,255,0.4); }
+        .msg-text { 
+            color: #ececec; font-size: 14px; line-height: 1.5; background: rgba(255,255,255,0.06);
+            padding: 8px 12px; border-radius: 0 12px 12px 12px; display: inline-block; word-break: break-word;
+        }
+        .chat-input-area { padding: 20px; background: transparent; }
+        .chat-input-box {
+            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+            border-radius: 20px; padding: 2px 16px; display: flex; align-items: center;
+        }
+        .chat-input { width: 100%; border: none; background: transparent; padding: 12px 0; color: white; height: 44px; }
+        .send-btn { background: transparent; border: none; color: white; cursor: pointer; opacity: 0.7; }
 
         @media (max-width: 900px) {
-            #app-layout { flex-direction: column; padding: 10px; }
-            .chat-panel { display: none; } /* Скрываем чат на мобилках для теста */
+            #app-layout { flex-direction: column; padding: 10px; gap: 10px; }
+            .stage-area { height: 50vh; flex: none; }
+            .chat-panel { width: 100%; flex: 1; padding-bottom: 80px; }
+            
         }
     </style>
 </head>
 <body>
-    <button id="force-audio-btn" onclick="app.resumeAudio()">🔊 ВКЛЮЧИТЬ ЗВУК</button>
 
     <div id="login-screen">
         <div class="login-card">
-            <h2 style="color:white; margin: 0 0 10px 0;">ПИТБУЛЬЧИКИ</h2>
-            <div style="font-size:11px; opacity:0.6; margin-bottom:20px;">DIRECT AUDIO MODE</div>
+            <h2 style="color:white; margin: 0 0 10px 0; font-weight: 700;">ПИТБУЛЬЧИКИ</h2>
             <div id="avatar-preview" class="avatar-upload" onclick="document.getElementById('avatar-file').click()"></div>
             <input type="file" id="avatar-file" hidden accept="image/*">
             <input type="text" id="username-in" class="discord-input" placeholder="Введите имя..." autocomplete="off">
-            <button class="btn-discord" onclick="app.join()">ВОЙТИ В КОМНАТУ</button>
+            <button class="btn-discord" onclick="app.join()">Войти</button>
         </div>
     </div>
 
@@ -146,44 +271,117 @@
         <div class="stage-area">
             <div class="stage-header">
                 <span>Voice Lounge</span>
-                <span style="font-size:11px; color:var(--success-color);">● Live</span>
+                <span id="connection-status" style="font-size:11px; padding: 4px 10px; background:rgba(0,242,96,0.15); color:var(--success-color); border-radius:10px;">● Online</span>
             </div>
+            
             <div id="grid-users" class="stage-grid"></div>
+
             <div class="bottom-controls">
-                <button class="control-btn" id="btn-mic" onclick="app.toggleMic()">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                <button class="control-btn active" id="btn-mic" onclick="app.toggleMic()" title="Микрофон">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2H3v2a9 9 0 0 0 8 8.88V22h2v-1.12A9 9 0 0 0 21 12v-2h-2Z"/></svg>
                 </button>
-                <button class="control-btn leave" onclick="location.reload()">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+
+                <button class="control-btn active" id="btn-screen" onclick="app.toggleScreen()" title="Демонстрация">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M3 4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4Zm2 0v11h14V4H5Zm-1 15a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1H4Z"/></svg>
                 </button>
+
+                <button class="control-btn leave" onclick="app.logout()" title="Выйти">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M11.95 16.5c-3.1 0-6.1-1.5-7.9-3.9a1 1 0 0 1-.05-1.2l2.3-3c.4-.5 1.1-.6 1.6-.3l3.5 2.1c.4.3.7.8.5 1.3l-.9 3.2c.3.1.6.2.95.2s.65-.1.95-.2l-.9-3.2c-.2-.5.1-1 .5-1.3l3.5-2.1c.5-.3 1.2-.2 1.6.3l2.3 3a1 1 0 0 1 0 1.2c-1.8 2.4-4.8 3.9-7.95 3.9Z" fill="white"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-panel">
+            <div class="chat-header"># general</div>
+            <div id="messages"></div>
+            <div class="chat-input-area">
+                <div class="chat-input-box">
+                    <input type="text" id="msg-in" class="chat-input" placeholder="Сообщение..." autocomplete="off">
+                    <button class="send-btn" onclick="app.sendText()">➤</button>
+                </div>
             </div>
         </div>
     </div>
 
 <script>
-const CFG = {
-    mqtt: 'wss://broker.emqx.io:8084/mqtt',
-    room: 'pitbull_direct_audio', 
-    ice: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+const ROOM_ID = 'pitbull-pro-v1'; // Новая комната для чистого теста
+const ICE_SERVERS = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] };
+
+// --- PRO AUDIO CONFIG ---
+// Эта конфигурация заставляет браузер включить "тяжелую артиллерию" для шумоподавления
+const STUDIO_AUDIO_CONSTRAINTS = {
+    echoCancellation: true,
+    autoGainControl: true,
+    noiseSuppression: true,
+    // Google Chrome specific:
+    googEchoCancellation: true,
+    googAutoGainControl: true,
+    googNoiseSuppression: true,
+    googHighpassFilter: true, // Убирает низкочастотный гул
+    channelCount: 1 // Моно (важно для изоляции голоса!)
 };
+
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+function playJoinSound() {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.frequency.value = 800; 
+    gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    osc.start(audioContext.currentTime);
+    osc.stop(audioContext.currentTime + 0.3);
+}
+
+function playLeaveSound() {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.frequency.value = 300; 
+    gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+    osc.start(audioContext.currentTime);
+    osc.stop(audioContext.currentTime + 0.4);
+}
 
 class App {
     constructor() {
-        this.myId = 'u_' + Math.random().toString(36).substr(2, 9);
-        this.myProfile = { name: '', avatar: 'https://cdn.discordapp.com/embed/avatars/0.png' };
-        this.peers = {}; 
         this.client = null;
-        this.localStream = null;
-        this.isMuted = false;
+        this.peers = {}; 
+        this.users = {}; 
+        this.lastSeen = {}; 
+        this.audioElements = {};
+        
+        // --- FIX ID DUPLICATION ---
+        let savedId = localStorage.getItem('dc_uid');
+        if (!savedId) {
+            savedId = 'u_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem('dc_uid', savedId);
+        }
+        this.myId = savedId;
+
+        this.myProfile = { name: '', avatar: '' };
         this.audioCtx = null;
-        this.lastSeen = {};
+        this.chatHistory = [];
+        this.localAudioStream = null;
+        this.localVideoStream = null;
+        this.isMuted = false;
+        this.isScreenOn = false;
+        
+        setInterval(() => this.cleanupGhosts(), 3000);
     }
 
     init() {
         const savedName = localStorage.getItem('dc_name');
+        const savedAva = localStorage.getItem('dc_ava');
+        this.myProfile.avatar = savedAva || 'https://cdn.discordapp.com/embed/avatars/0.png';
+        document.getElementById('avatar-preview').style.backgroundImage = `url(${this.myProfile.avatar})`;
         if(savedName) document.getElementById('username-in').value = savedName;
-        
-        // Обработка загрузки аватарки
+
         document.getElementById('avatar-file').addEventListener('change', e => {
             const f = e.target.files[0];
             if(f) {
@@ -195,15 +393,15 @@ class App {
                 r.readAsDataURL(f);
             }
         });
+        document.getElementById('msg-in').addEventListener('keydown', e => { if(e.key==='Enter') this.sendText(); });
+        
+        // FIX INSTANT EXIT
+        window.addEventListener('beforeunload', () => this.sendLeaveSignal());
 
-        // Мониторинг состояния аудио-контекста
-        setInterval(() => {
-            if (this.audioCtx && this.audioCtx.state === 'suspended') {
-                document.getElementById('force-audio-btn').style.display = 'block';
-            } else {
-                document.getElementById('force-audio-btn').style.display = 'none';
-            }
-        }, 1000);
+        if(localStorage.getItem('dc_session') === 'true' && savedName) {
+            this.myProfile.name = savedName;
+            this.enterApp();
+        }
     }
 
     async join() {
@@ -211,216 +409,464 @@ class App {
         if(!name) return alert('Имя обязательно!');
         this.myProfile.name = name;
         localStorage.setItem('dc_name', name);
+        localStorage.setItem('dc_ava', this.myProfile.avatar);
+        localStorage.setItem('dc_session', 'true');
+        this.enterApp();
+    }
 
-        // 1. СРАЗУ инициализируем AudioContext по клику пользователя
-        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        await this.audioCtx.resume();
-
+    async enterApp() {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-layout').classList.remove('hidden');
 
         try {
-            // 2. Получаем микрофон
-            this.localStream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-                video: false
+            // APPLY STUDIO AUDIO CONSTRAINTS
+            this.localAudioStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: STUDIO_AUDIO_CONSTRAINTS
             });
-
-            document.getElementById('btn-mic').classList.add('active');
-            this.renderCard(this.myId, this.myProfile, true);
-            
-            // Локальная визуализация (без вывода звука в динамики!)
-            this.setupLocalVisualizer();
-
-            this.connectMQTT();
-
-        } catch(e) {
-            alert("Ошибка доступа к микрофону: " + e.message);
+            this.setupVAD(this.localAudioStream, this.myId);
+        } catch(e) { 
+            console.error("Mic error:", e); 
+            alert("Ошибка микрофона! Проверьте разрешения.");
         }
+
+        this.connectMQTT();
+        this.updateGrid();
+        this.loadChatHistory();
     }
 
-    // Принудительное включение звука кнопкой
-    async resumeAudio() {
-        if (this.audioCtx) {
-            await this.audioCtx.resume();
-            document.getElementById('force-audio-btn').style.display = 'none';
-        }
+    logout() {
+        this.sendLeaveSignal();
+        localStorage.removeItem('dc_session');
+        setTimeout(() => location.reload(), 100);
     }
 
-    setupLocalVisualizer() {
-        // Для себя: Stream -> Analyser (без подключения к destination)
-        const src = this.audioCtx.createMediaStreamSource(this.localStream);
-        const anal = this.audioCtx.createAnalyser();
-        anal.fftSize = 128; // Быстрая реакция
-        src.connect(anal);
-        this.runAnimationLoop(anal, this.myId);
-    }
-
-    setupRemoteAudio(stream, uid) {
-        // ДЛЯ СОБЕСЕДНИКА: Stream -> Source -> Analyser -> Destination
-        // Это гарантирует, что если анализатор работает, звук идет в колонки
+    connectMQTT() {
+        this.client = mqtt.connect(MQTT_BROKER, { keepalive: 10, clean: true, clientId: this.myId });
         
-        // 1. Web Audio Path (для звука и визуализации)
+        this.client.on('connect', () => {
+            this.client.subscribe(`${ROOM_ID}/presence`);
+            this.client.subscribe(`${ROOM_ID}/chat`);
+            this.client.subscribe(`${ROOM_ID}/signal/${this.myId}`);
+            
+            this.announce('online');
+            this.announceInterval = setInterval(() => this.announce('online'), 4000);
+        });
+
+        this.client.on('message', (topic, msg) => {
+            try {
+                const d = JSON.parse(msg.toString());
+                if(topic.includes('presence')) this.handlePresence(d);
+                else if(topic.includes('chat')) this.handleIncomingChat(d);
+                else this.handleSignal(d);
+            } catch(e) { console.error(e); }
+        });
+    }
+
+    sendLeaveSignal() {
+        if(this.client && this.client.connected) {
+            this.client.publish(`${ROOM_ID}/presence`, JSON.stringify({
+                id: this.myId,
+                status: 'offline'
+            }));
+        }
+    }
+
+    announce(status = 'online') {
+        if(!this.client || !this.client.connected) return;
+        this.client.publish(`${ROOM_ID}/presence`, JSON.stringify({
+            id: this.myId,
+            user: this.myProfile,
+            isMuted: this.isMuted,
+            status: status
+        }));
+    }
+
+    handlePresence(data) {
+        if(data.id === this.myId) return;
+        
+        if (data.status === 'offline') {
+            this.removeRemoteUser(data.id);
+            return;
+        }
+
+        this.lastSeen[data.id] = Date.now();
+        
+        const isNewUser = !this.users[data.id];
+        
+        if(isNewUser) {
+            this.users[data.id] = data.user;
+            playJoinSound(); 
+            this.updateGrid();
+            if(this.myId > data.id) this.createPeer(data.id, true);
+        }
+    }
+
+    cleanupGhosts() {
+        const now = Date.now();
+        const TIMEOUT = 10000;
+
+        Object.keys(this.users).forEach(uid => {
+            if (!this.lastSeen[uid] || (now - this.lastSeen[uid] > TIMEOUT)) {
+                console.log(`User ${uid} timed out`);
+                this.removeRemoteUser(uid);
+            }
+        });
+    }
+
+    removeRemoteUser(uid) {
+        if(!this.users[uid]) return;
+        
+        delete this.users[uid];
+        delete this.lastSeen[uid];
+
+        if(this.peers[uid]) {
+            this.peers[uid].close();
+            delete this.peers[uid];
+        }
+        if(this.audioElements[uid]) {
+            this.audioElements[uid].remove();
+            delete this.audioElements[uid];
+        }
+
+        const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+        if(card) {
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.8)';
+            setTimeout(() => card.remove(), 300);
+        }
+        
+        playLeaveSound();
+    }
+
+    // --- WebRTC ---
+
+    createPeer(targetId, initiator) {
+        if(this.peers[targetId]) return;
+        const pc = new RTCPeerConnection(ICE_SERVERS);
+        this.peers[targetId] = pc;
+
+        if(this.localAudioStream) {
+            this.localAudioStream.getTracks().forEach(t => pc.addTrack(t, this.localAudioStream));
+        }
+        if(this.localVideoStream) {
+            this.localVideoStream.getTracks().forEach(t => pc.addTrack(t, this.localVideoStream));
+        }
+
+        pc.onicecandidate = e => {
+            if(e.candidate) this.sendSig(targetId, { type: 'candidate', candidate: e.candidate });
+        };
+
+        pc.ontrack = e => {
+            const stream = e.streams[0];
+            if(e.track.kind === 'audio') {
+                const aud = new Audio();
+                aud.srcObject = stream;
+                aud.autoplay = true;
+                document.body.appendChild(aud);
+                this.audioElements[targetId] = aud; 
+                this.setupVAD(stream, targetId);
+            } 
+            else if(e.track.kind === 'video') {
+                this.attachVideoToCard(targetId, stream);
+            }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+            if(pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                this.removeRemoteUser(targetId);
+            }
+        }
+
+        if(initiator) {
+            this.renegotiate(targetId);
+        }
+    }
+
+    async renegotiate(targetId) {
+        const pc = this.peers[targetId];
+        if(!pc) return;
+        try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            this.sendSig(targetId, { type: 'sdp', sdp: pc.localDescription });
+        } catch(e) { console.error(e); }
+    }
+
+    async handleSignal(data) {
+        const { senderId, payload } = data;
+        if(!this.peers[senderId]) this.createPeer(senderId, false);
+        const pc = this.peers[senderId];
+
+        try {
+            if(payload.type === 'sdp') {
+                if(pc.signalingState !== "stable" && payload.sdp.type === "offer") {
+                     await Promise.all([
+                        pc.setLocalDescription({type: "rollback"}),
+                        pc.setRemoteDescription(payload.sdp)
+                     ]);
+                } else {
+                    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                }
+                
+                if(payload.sdp.type === 'offer') {
+                    const ans = await pc.createAnswer();
+                    await pc.setLocalDescription(ans);
+                    this.sendSig(senderId, {type:'sdp', sdp:ans});
+                }
+            } else if(payload.type === 'candidate') {
+                await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            }
+        } catch(e) { console.warn("Signal error", e); }
+    }
+
+    sendSig(target, payload) {
+        this.client.publish(`${ROOM_ID}/signal/${target}`, JSON.stringify({ senderId: this.myId, payload }));
+    }
+
+    // --- Media Controls ---
+
+    toggleMic() {
+        if(!this.localAudioStream) return;
+        this.isMuted = !this.isMuted;
+        this.localAudioStream.getAudioTracks()[0].enabled = !this.isMuted;
+        
+        const btn = document.getElementById('btn-mic');
+        btn.classList.toggle('active', !this.isMuted);
+        btn.classList.toggle('muted', this.isMuted);
+        this.announce();
+    }
+
+    async toggleScreen() {
+        const btn = document.getElementById('btn-screen');
+        if(this.isScreenOn) {
+            this.stopVideo();
+            this.isScreenOn = false;
+            btn.classList.remove('on');
+        } else {
+            try {
+                this.localVideoStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                this.isScreenOn = true;
+                btn.classList.add('on');
+                
+                this.localVideoStream.getVideoTracks()[0].onended = () => this.toggleScreen();
+                this.broadcastVideo();
+            } catch(e) { console.log("Screen cancelled"); }
+        }
+    }
+
+    stopVideo() {
+        if(this.localVideoStream) {
+            this.localVideoStream.getTracks().forEach(t => t.stop());
+            this.localVideoStream = null;
+        }
+        this.hideLocalVideo();
+        Object.keys(this.peers).forEach(pid => {
+            const pc = this.peers[pid];
+            const senders = pc.getSenders();
+            const vidSender = senders.find(s => s.track && s.track.kind === 'video');
+            if(vidSender) pc.removeTrack(vidSender);
+            this.renegotiate(pid);
+        });
+    }
+
+    broadcastVideo() {
+        this.showLocalVideo();
+        const track = this.localVideoStream.getVideoTracks()[0];
+        
+        Object.keys(this.peers).forEach(pid => {
+            const pc = this.peers[pid];
+            const senders = pc.getSenders();
+            const vidSender = senders.find(s => s.track && s.track.kind === 'video');
+            
+            if(vidSender) {
+                vidSender.replaceTrack(track);
+            } else {
+                pc.addTrack(track, this.localVideoStream);
+                this.renegotiate(pid);
+            }
+        });
+    }
+
+    showLocalVideo() {
+        this.attachVideoToCard(this.myId, this.localVideoStream, true);
+    }
+    
+    hideLocalVideo() {
+        const card = document.querySelector(`.voice-card[data-uid="${this.myId}"]`);
+        if(card) {
+            card.classList.remove('has-video');
+            const vid = card.querySelector('video');
+            if(vid) vid.srcObject = null;
+        }
+    }
+
+    attachVideoToCard(uid, stream, isMuted=false) {
+        setTimeout(() => {
+            const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+            if(!card) return;
+            
+            let vid = card.querySelector('video');
+            if(!vid) {
+                vid = document.createElement('video');
+                vid.className = 'card-video';
+                vid.autoplay = true;
+                vid.playsInline = true;
+                card.prepend(vid);
+            }
+            
+            vid.srcObject = stream;
+            vid.muted = true;
+            card.classList.add('has-video');
+        }, 100);
+    }
+    
+    setVolume(uid, value) {
+        if(this.audioElements[uid]) {
+            this.audioElements[uid].volume = value / 100;
+        }
+    }
+
+    toggleZoom(uid) {
+        const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+        if(!card) return;
+        
+        const already = document.querySelector('.voice-card.expanded');
+        if(already && already !== card) already.classList.remove('expanded');
+
+        card.classList.toggle('expanded');
+    }
+
+    updateGrid() {
+        const grid = document.getElementById('grid-users');
+        if(!document.querySelector(`.voice-card[data-uid="${this.myId}"]`)) {
+             this.renderCard(grid, this.myId, this.myProfile, true);
+        }
+
+        Object.keys(this.users).forEach(uid => {
+            if(!document.querySelector(`.voice-card[data-uid="${uid}"]`)) {
+                this.renderCard(grid, uid, this.users[uid], false);
+            }
+        });
+        applyGradients();
+    }
+
+    renderCard(container, uid, profile, isMe) {
+        const el = document.createElement('div');
+        el.className = 'voice-card';
+        el.setAttribute('data-uid', uid);
+        el.onclick = (e) => {
+            if(e.target.closest('.close-zoom-btn') || e.target.closest('.volume-control')) return;
+            this.toggleZoom(uid);
+        };
+
+        const volumeHTML = !isMe ? `
+            <div class="volume-control">
+                <span class="volume-icon">🔊</span>
+                <input type="range" class="volume-slider" min="0" max="200" value="100" 
+                       oninput="app.setVolume('${uid}', this.value)" onclick="event.stopPropagation()">
+            </div>
+        ` : '';
+
+        el.innerHTML = `
+            <div class="expand-hint">+</div>
+            <button class="close-zoom-btn" onclick="event.stopPropagation(); app.toggleZoom('${uid}')">✕</button>
+            ${volumeHTML}
+            <video class="card-video" autoplay playsinline muted></video>
+            <div class="card-avatar" style="background-image: url('${profile.avatar}')"></div>
+            <div class="card-name">${profile.name} ${isMe ? '(Вы)' : ''}</div>
+        `;
+        container.appendChild(el);
+    }
+
+    loadChatHistory() {
+        const saved = localStorage.getItem('dc_chat_history');
+        if(saved) {
+            this.chatHistory = JSON.parse(saved);
+            this.chatHistory.forEach(msg => this.renderChat(msg, false));
+        }
+    }
+    
+    saveChatHistory() {
+        if(this.chatHistory.length > 100) this.chatHistory = this.chatHistory.slice(-100);
+        localStorage.setItem('dc_chat_history', JSON.stringify(this.chatHistory));
+    }
+
+    sendText() {
+        const inp = document.getElementById('msg-in');
+        const txt = inp.value.trim();
+        if(!txt) return;
+        const payload = { 
+            name: this.myProfile.name, avatar: this.myProfile.avatar, 
+            text: txt, time: new Date().toLocaleTimeString().slice(0,5)
+        };
+        this.client.publish(`${ROOM_ID}/chat`, JSON.stringify(payload));
+        inp.value = '';
+    }
+
+    handleIncomingChat(data) {
+        this.chatHistory.push(data);
+        this.saveChatHistory();
+        this.renderChat(data, false);
+    }
+
+    renderChat(d) {
+        const list = document.getElementById('messages');
+        const div = document.createElement('div');
+        div.className = 'msg';
+        div.innerHTML = `
+            <div class="msg-ava" style="background-image: url('${d.avatar}')"></div>
+            <div class="msg-body">
+                <div class="msg-top"><span class="msg-user">${d.name}</span><span class="msg-time">${d.time}</span></div>
+                <div class="msg-text">${d.text.replace(/</g, "&lt;")}</div>
+            </div>
+        `;
+        list.appendChild(div);
+        list.scrollTop = list.scrollHeight;
+    }
+
+    setupVAD(stream, uid) {
+        if(!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(this.audioCtx.state==='suspended') this.audioCtx.resume();
         const src = this.audioCtx.createMediaStreamSource(stream);
-        const anal = this.audioCtx.createAnalyser();
-        anal.fftSize = 128;
-        
-        const gain = this.audioCtx.createGain();
-        gain.gain.value = 1.0; // Громкость 100%
-
-        src.connect(anal);
-        anal.connect(gain);
-        gain.connect(this.audioCtx.destination); // <--- ВЫВОД ЗВУКА
-
-        // 2. HTML Audio Hack (для стабильности потока в Chrome)
-        // Chrome иногда убивает WebAudio поток, если нет <audio> тега
-        const silentAudio = new Audio();
-        silentAudio.srcObject = stream;
-        silentAudio.volume = 0; // Звук здесь не нужен, он идет через Web Audio
-        silentAudio.muted = true; 
-        silentAudio.play().catch(e => console.log("Silent play error", e));
-
-        // 3. Запуск анимации
-        this.runAnimationLoop(anal, uid);
-    }
-
-    runAnimationLoop(analyser, uid) {
-        const data = new Uint8Array(analyser.frequencyBinCount);
+        const anl = this.audioCtx.createAnalyser();
+        anl.fftSize = 128;
+        src.connect(anl);
+        const data = new Uint8Array(anl.frequencyBinCount);
         const loop = () => {
-            if(!document.querySelector(`[data-uid="${uid}"]`)) return; // Стоп если юзер вышел
-            
-            analyser.getByteFrequencyData(data);
-            
-            // Считаем громкость
-            let sum = 0;
-            for(let i=0; i<data.length; i++) sum+=data[i];
-            const vol = sum / data.length;
-
-            const card = document.querySelector(`[data-uid="${uid}"]`);
+            anl.getByteFrequencyData(data);
+            let sum = 0; for(let i=0; i<data.length; i++) sum+=data[i];
+            const avg = sum/data.length;
+            const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
             if(card) {
-                // Порог срабатывания анимации
-                if(vol > 10) card.classList.add('speaking');
+                if(avg > 12) card.classList.add('speaking');
                 else card.classList.remove('speaking');
             }
             requestAnimationFrame(loop);
         };
         loop();
     }
-
-    connectMQTT() {
-        this.client = mqtt.connect(CFG.mqtt, { clientId: this.myId, keepalive: 60 });
-        this.client.on('connect', () => {
-            this.client.subscribe(`${CFG.room}/presence`);
-            this.client.subscribe(`${CFG.room}/signal/${this.myId}`);
-            this.announce();
-            setInterval(() => this.announce(), 3000);
-            setInterval(() => this.cleanup(), 5000);
-        });
-        this.client.on('message', (t, m) => {
-            if(t.includes(this.myId)) return;
-            try {
-                const d = JSON.parse(m.toString());
-                if(t.includes('presence')) this.handlePresence(d);
-                else if(t.includes('signal')) this.handleSignal(d);
-            } catch(e){}
-        });
-    }
-
-    announce() { this.client.publish(`${CFG.room}/presence`, JSON.stringify({ id: this.myId, user: this.myProfile })); }
-
-    handlePresence(d) {
-        this.lastSeen[d.id] = Date.now();
-        if(this.peers[d.id]) return;
-        this.renderCard(d.id, d.user, false);
-        this.setupPeer(d.id, this.myId < d.id);
-    }
-
-    setupPeer(uid, polite) {
-        const pc = new RTCPeerConnection(CFG.ice);
-        this.peers[uid] = { pc };
-        
-        // Добавляем свой микрофон
-        this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
-
-        pc.ontrack = e => {
-            if(e.track.kind === 'audio') {
-                console.log("Audio track received from", uid);
-                this.setupRemoteAudio(e.streams[0], uid);
-            }
-        };
-
-        // Стандартная WebRTC логика (Perfect Negotiation)
-        pc.onnegotiationneeded = async () => {
-            try {
-                await pc.setLocalDescription();
-                this.client.publish(`${CFG.room}/signal/${uid}`, JSON.stringify({ sender: this.myId, data: { desc: pc.localDescription } }));
-            } catch(e){ console.error(e); }
-        };
-
-        pc.onicecandidate = e => { 
-            if(e.candidate) this.client.publish(`${CFG.room}/signal/${uid}`, JSON.stringify({ sender: this.myId, data: { cand: e.candidate } }));
-        };
-    }
-
-    async handleSignal(msg) {
-        const { sender, data } = msg;
-        const pc = this.peers[sender]?.pc;
-        if(!pc) return;
-
-        try {
-            if(data.desc) {
-                if(data.desc.type === 'offer' && pc.signalingState !== 'stable') await pc.setLocalDescription({type: "rollback"});
-                await pc.setRemoteDescription(data.desc);
-                if(data.desc.type === 'offer') {
-                    await pc.setLocalDescription();
-                    this.client.publish(`${CFG.room}/signal/${sender}`, JSON.stringify({ sender: this.myId, data: { desc: pc.localDescription } }));
-                }
-            } else if(data.cand) {
-                await pc.addIceCandidate(data.cand);
-            }
-        } catch(e) { console.error(e); }
-    }
-
-    cleanup() {
-        const now = Date.now();
-        Object.keys(this.peers).forEach(id => {
-            if(now - this.lastSeen[id] > 8000) {
-                this.peers[id].pc.close();
-                delete this.peers[id];
-                const el = document.querySelector(`[data-uid="${id}"]`);
-                if(el) el.remove();
-            }
-        });
-    }
-
-    renderCard(uid, user, isMe) {
-        if(document.querySelector(`[data-uid="${uid}"]`)) return;
-        const grid = document.getElementById('grid-users');
-        const el = document.createElement('div');
-        el.className = 'voice-card';
-        el.setAttribute('data-uid', uid);
-        
-        // Рандомный градиент для красоты
-        const grads = ['linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)', 'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)', 'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)'];
-        const bg = grads[Math.floor(Math.random()*grads.length)];
-        el.style.setProperty('--user-gradient', bg);
-
-        el.innerHTML = `
-            <div class="card-avatar" style="background-image: url('${user.avatar}')"></div>
-            <div class="card-name">${user.name} ${isMe ? '(Вы)' : ''}</div>
-        `;
-        grid.appendChild(el);
-    }
-
-    toggleMic() {
-        this.isMuted = !this.isMuted;
-        document.getElementById('btn-mic').classList.toggle('active');
-        this.localStream.getAudioTracks()[0].enabled = !this.isMuted;
-    }
 }
 
 const app = new App();
 app.init();
+
+function applyGradients() {
+  const cards = document.querySelectorAll('.voice-card');
+  const gradients = [
+    'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%)',
+    'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+    'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+  ];
+  cards.forEach(card => {
+    if(!card.style.getPropertyValue('--user-gradient')) {
+        card.style.setProperty('--user-gradient', gradients[Math.floor(Math.random() * gradients.length)]);
+    }
+  });
+}
+const observer = new MutationObserver(applyGradients);
+if(document.getElementById('grid-users')) observer.observe(document.getElementById('grid-users'), { childList: true });
 </script>
 </body>
 </html>
