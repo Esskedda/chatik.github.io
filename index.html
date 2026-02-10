@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><ellipse cx='32' cy='32' rx='28' ry='30' fill='%23000'/><ellipse cx='32' cy='37' rx='14' ry='16' fill='%23000'/><ellipse cx='24' cy='28' rx='4' ry='6' fill='%23fff'/><ellipse cx='40' cy='28' rx='4' ry='6' fill='%23fff'/></svg>">
-    <title>ПИТБУЛЬЧИКИ: 5/0</title>
+    <title>ПИТБУЛЬЧИКИ ЧАТ</title>
     <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
     
     <style>
@@ -12,12 +12,13 @@
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.1);
             --text-main: #ffffff;
+            --text-muted: #a1a1aa;
             --primary-gradient: linear-gradient(135deg, #00C6FB 0%, #005BEA 100%);
             --danger-gradient: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);
             --success-color: #00f260;
             --radius-lg: 24px;
             --radius-sm: 12px;
-            --font-stack: -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
         }
 
         body, html { 
@@ -25,427 +26,1008 @@
             font-family: var(--font-stack);
             color: var(--text-main);
             overflow: hidden;
-            background: #0f0c29;
-            background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e);
+            background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #7597de, #2b1055);
             background-size: 400% 400%;
             animation: gradientShift 30s ease infinite; 
         }
 
-        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 0;
+        }
 
         * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        .icon { width: 24px; height: 24px; fill: currentColor; filter: drop-shadow(0 0 5px rgba(255,255,255,0.3)); }
         .hidden { display: none !important; }
 
-        /* --- UI --- */
-        #login-screen { display: flex; height: 100vh; align-items: center; justify-content: center; z-index: 10; position: relative; }
-        .login-card { width: 100%; max-width: 380px; padding: 40px; border-radius: var(--radius-lg); text-align: center; background: rgba(20, 20, 30, 0.6); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(40px); }
-        .btn-discord { background: var(--primary-gradient); color: white; border: none; width: 100%; padding: 14px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        .btn-discord:hover { filter: brightness(1.1); }
-        input.discord-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 14px; color: white; width: 100%; border-radius: var(--radius-sm); text-align: center; margin-bottom: 20px; }
-
-        #app-layout { display: flex; height: 100vh; width: 100%; padding: 20px; gap: 20px; position: relative; z-index: 5; }
-        .stage-area { flex: 1; display: flex; flex-direction: column; border-radius: var(--radius-lg); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); backdrop-filter: blur(20px); overflow: hidden; position: relative; }
-        .stage-grid { flex: 1; padding: 20px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); grid-auto-rows: 200px; gap: 20px; }
-
-        .voice-card { background: rgba(0,0,0,0.2); border-radius: var(--radius-lg); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s; }
-        .voice-card.speaking { border-color: var(--success-color); box-shadow: 0 0 20px rgba(0, 242, 96, 0.2); }
-        .card-avatar { width: 80px; height: 80px; border-radius: 50%; background-size: cover; background-color: #000; margin-bottom: 15px; }
-        .card-name { font-weight: 600; font-size: 14px; }
-
-        /* GATE INDICATOR */
-        .gate-status {
-            position: absolute; top: 15px; right: 15px; width: 10px; height: 10px; border-radius: 50%;
-            background: #333; transition: 0.1s; box-shadow: 0 0 5px #000;
+        /* --- LOGIN --- */
+        #login-screen {
+            position: relative; z-index: 10;
+            display: flex; height: 100vh; align-items: center; justify-content: center;
         }
-        .gate-status.open { background: var(--success-color); box-shadow: 0 0 10px var(--success-color); }
-        .gate-label { position: absolute; top: 12px; right: 32px; font-size: 10px; opacity: 0.5; text-transform: uppercase; }
+        .login-card {
+            width: 100%; max-width: 380px; padding: 40px; border-radius: var(--radius-lg);
+            text-align: center; background: rgba(20, 20, 30, 0.6); border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(40px); animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float { 0% {transform: translateY(0px);} 50% {transform: translateY(-10px);} 100% {transform: translateY(0px);} }
+        .avatar-upload {
+            width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 25px; 
+            background-size: cover; cursor: pointer; border: 2px solid rgba(255,255,255,0.1); 
+            background-color: rgba(255,255,255,0.05); transition: 0.3s;
+        }
+        .avatar-upload:hover { transform: scale(1.05); border-color: #fff; }
+        input.discord-input {
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+            padding: 14px; color: white; width: 100%; border-radius: var(--radius-sm);
+            font-size: 16px; margin-bottom: 20px; text-align: center;
+        }
+        .btn-discord {
+            background: var(--primary-gradient); color: white; border: none; width: 100%;
+            padding: 14px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer;
+            transition: 0.3s; box-shadow: 0 0 20px rgba(0, 198, 251, 0.3);
+        }
+        .btn-discord:hover { filter: brightness(1.1); transform: translateY(-2px); }
 
-        .bottom-controls { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 40px; backdrop-filter: blur(10px); z-index: 100; }
-        .control-btn { width: 50px; height: 50px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: 0.2s; background: rgba(255,255,255,0.1); color: white; }
-        .control-btn:hover { background: rgba(255,255,255,0.2); }
-        .control-btn.active { background: white; color: black; }
-        .control-btn.leave { background: var(--danger-gradient); color: white; }
+        /* --- LAYOUT --- */
+        #app-layout {
+            position: relative; z-index: 5; display: flex; height: 100vh; width: 100%;
+            padding: 20px; gap: 20px;
+        }
 
-        .chat-panel { width: 300px; background: rgba(0,0,0,0.2); border-radius: var(--radius-lg); border: 1px solid var(--glass-border); display: flex; flex-direction: column; }
-        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 12px; font-size: 13px; color: #ddd; word-break: break-word; }
-        .chat-input { background: transparent; border: none; padding: 15px; color: white; border-top: 1px solid rgba(255,255,255,0.1); outline: none; }
+        .stage-area {
+            flex: 1; display: flex; flex-direction: column;
+            border-radius: var(--radius-lg); overflow: hidden; position: relative;
+            background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border);
+            backdrop-filter: blur(20px);
+        }
+        .stage-header {
+            padding: 20px 24px; font-weight: 600; color: white; font-size: 14px;
+            display: flex; justify-content: space-between; align-items: center;
+            text-transform: uppercase; opacity: 0.8; z-index: 10;
+        }
+        .stage-grid {
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-auto-rows: 200px; gap: 20px; align-content: start;
+            position: relative;
+        }
 
-        @media (max-width: 800px) { #app-layout { flex-direction: column; } .chat-panel { width: 100%; height: 200px; } }
+        /* --- CARDS --- */
+        .voice-card {
+            background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-lg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid rgba(255,255,255,0.05); cursor: pointer; overflow: hidden;
+        }
+        .voice-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        
+        .voice-card::before {
+            content: ''; position: absolute; inset: 0;
+            background: var(--user-gradient, transparent); opacity: 0.15; z-index: 0;
+            transition: opacity 0.3s;
+        }
+
+        .voice-card.expanded .expand-hint { opacity: 0 !important; }
+
+        /* EXPANDED */
+        .voice-card.expanded {
+            position: absolute; 
+            top: 10px; left: 10px; right: 10px; bottom: 80px;
+            z-index: 100;
+            transform: none !important;
+            box-shadow: 0 0 100px rgba(0,0,0,0.8);
+            border-color: rgba(255,255,255,0.3);
+            background: #111;
+        }
+        
+        .expand-hint {
+            position: absolute; top: 10px; right: 10px; z-index: 10;
+            background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 50%;
+            opacity: 0; transition: 0.2s; pointer-events: none;
+        }
+        .voice-card:hover .expand-hint { opacity: 1; }
+
+        .close-zoom-btn {
+            position: absolute; top: 20px; right: 20px; z-index: 101;
+            background: rgba(0,0,0,0.6); color: white; border: none;
+            width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+            display: none; font-size: 20px;
+        }
+        .voice-card.expanded .close-zoom-btn { display: flex; align-items: center; justify-content: center; }
+
+        /* VIDEO */
+        .card-video {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: contain; z-index: 1; display: none; background: #000;
+        }
+        .voice-card.has-video .card-video { display: block; }
+        
+        .voice-card.has-video .card-avatar { 
+            transform: scale(0.5); opacity: 0.8; position: absolute; bottom: 10px; left: 10px; 
+            width: 40px; height: 40px; margin: 0; z-index: 2;
+        }
+        .voice-card.expanded .card-avatar { bottom: 30px; left: 30px; transform: scale(0.8); }
+        
+        .voice-card.has-video .card-name {
+            position: absolute; bottom: 10px; left: 60px; z-index: 2; 
+            background: rgba(0,0,0,0.5); padding: 4px 8px; border-radius: 4px;
+            margin: 0; font-size: 12px;
+        }
+        .voice-card.expanded .card-name { bottom: 40px; left: 80px; font-size: 16px; padding: 8px 16px; }
+
+        .card-avatar {
+            width: 80px; height: 80px; border-radius: 40%; 
+            background-size: cover; background-color: #000; position: relative; z-index: 2;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .card-name {
+            font-weight: 500; color: white; font-size: 15px; margin-top: 16px; z-index: 2;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .voice-card.speaking .card-avatar { box-shadow: 0 0 30px var(--success-color); border: 2px solid var(--success-color); }
+
+        /* VOLUME CONTROL */
+        .volume-control {
+            position: absolute; top: 10px; left: 10px; z-index: 10;
+            background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 20px;
+            opacity: 0; transition: 0.3s; pointer-events: none;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .voice-card:hover .volume-control { opacity: 1; pointer-events: auto; }
+        
+        .volume-slider {
+            width: 80px; height: 4px; -webkit-appearance: none; appearance: none;
+            background: rgba(255,255,255,0.2); border-radius: 5px; cursor: pointer;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 12px; height: 12px; background: white; border-radius: 50%; cursor: pointer;
+        }
+        .volume-icon { font-size: 14px; }
+
+        /* --- CONTROLS --- */
+        .bottom-controls {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            height: 70px; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(25px);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 40px;
+            display: flex; align-items: center; justify-content: center; gap: 15px; 
+            padding: 0 25px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); z-index: 200;
+        }
+        .control-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.3s; position: relative;
+        }
+        .control-btn.active { background: rgba(255,255,255,0.1); color: white; }
+        .control-btn.active:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
+        .control-btn.muted { background: rgba(20,20,20,0.8); color: #ff4b2b; border: 1px solid #ff4b2b; }
+        .control-btn.on::after {
+            content: ''; position: absolute; top: 0; right: 0; width: 12px; height: 12px;
+            background: var(--success-color); border-radius: 50%; border: 2px solid #333;
+        }
+        .control-btn.leave { background: var(--danger-gradient); }
+
+        /* --- CHAT --- */
+        .chat-panel {
+            width: 360px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border);
+            backdrop-filter: blur(30px); border-radius: var(--radius-lg);
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); z-index: 5;
+        }
+        .chat-header {
+            height: 60px; padding: 0 20px; border-bottom: 1px solid var(--glass-border);
+            display: flex; align-items: center; font-weight: 600; color: white; background: rgba(255,255,255,0.02);
+        }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .msg { display: flex; gap: 12px; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+        .msg-ava { width: 36px; height: 36px; border-radius: 12px; background-size: cover; flex-shrink: 0; }
+        .msg-body { flex: 1; min-width: 0; }
+        .msg-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+        .msg-user { font-weight: 600; font-size: 13px; color: rgba(255,255,255,0.9); }
+        .msg-time { font-size: 10px; color: rgba(255,255,255,0.4); }
+        .msg-text { 
+            color: #ececec; font-size: 14px; line-height: 1.5; background: rgba(255,255,255,0.06);
+            padding: 8px 12px; border-radius: 0 12px 12px 12px; display: inline-block; word-break: break-word;
+        }
+        .chat-input-area { padding: 20px; background: transparent; }
+        .chat-input-box {
+            background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border);
+            border-radius: 20px; padding: 2px 16px; display: flex; align-items: center;
+        }
+        .chat-input { width: 100%; border: none; background: transparent; padding: 12px 0; color: white; height: 44px; }
+        .send-btn { background: transparent; border: none; color: white; cursor: pointer; opacity: 0.7; }
+
+        @media (max-width: 900px) {
+            #app-layout { flex-direction: column; padding: 10px; gap: 10px; }
+            .stage-area { height: 50vh; flex: none; }
+            .chat-panel { width: 100%; flex: 1; padding-bottom: 80px; }
+        }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
         <div class="login-card">
-            <h2>ПИТБУЛЬЧИКИ</h2>
-            <input type="text" id="username-in" class="discord-input" placeholder="Ваше имя">
-            <button class="btn-discord" onclick="app.join()">ВОЙТИ В ЭФИР</button>
+            <h2 style="color:white; margin: 0 0 10px 0; font-weight: 700;">ПИТБУЛЬЧИКИ</h2>
+            <div id="avatar-preview" class="avatar-upload" onclick="document.getElementById('avatar-file').click()"></div>
+            <input type="file" id="avatar-file" hidden accept="image/*">
+            <input type="text" id="username-in" class="discord-input" placeholder="Введите имя..." autocomplete="off">
+            <button class="btn-discord" onclick="app.join()">Войти</button>
         </div>
     </div>
 
     <div id="app-layout" class="hidden">
         <div class="stage-area">
+            <div class="stage-header">
+                <span>Voice Lounge</span>
+                <span id="connection-status" style="font-size:11px; padding: 4px 10px; background:rgba(0,242,96,0.15); color:var(--success-color); border-radius:10px;">● Online</span>
+            </div>
+            
             <div id="grid-users" class="stage-grid"></div>
+
             <div class="bottom-controls">
-                <button class="control-btn active" id="btn-mic" onclick="app.toggleMic()">🎤</button>
-                <button class="control-btn leave" onclick="app.logout()">🚪</button>
+                <button class="control-btn active" id="btn-mic" onclick="app.toggleMic()" title="Микрофон">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2H3v2a9 9 0 0 0 8 8.88V22h2v-1.12A9 9 0 0 0 21 12v-2h-2Z"/></svg>
+                </button>
+
+                <button class="control-btn active" id="btn-screen" onclick="app.toggleScreen()" title="Демонстрация">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M3 4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4Zm2 0v11h14V4H5Zm-1 15a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1H4Z"/></svg>
+                </button>
+
+                <button class="control-btn leave" onclick="app.logout()" title="Выйти">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M11.95 16.5c-3.1 0-6.1-1.5-7.9-3.9a1 1 0 0 1-.05-1.2l2.3-3c.4-.5 1.1-.6 1.6-.3l3.5 2.1c.4.3.7.8.5 1.3l-.9 3.2c.3.1.6.2.95.2s.65-.1.95-.2l-.9-3.2c-.2-.5.1-1 .5-1.3l3.5-2.1c.5-.3 1.2-.2 1.6.3l2.3 3a1 1 0 0 1 0 1.2c-1.8 2.4-4.8 3.9-7.95 3.9Z" fill="white"/></svg>
+                </button>
             </div>
         </div>
+
         <div class="chat-panel">
+            <div class="chat-header"># general</div>
             <div id="messages"></div>
-            <input type="text" id="msg-in" class="chat-input" placeholder="Чат...">
+            <div class="chat-input-area">
+                <div class="chat-input-box">
+                    <input type="text" id="msg-in" class="chat-input" placeholder="Сообщение..." autocomplete="off">
+                    <button class="send-btn" onclick="app.sendText()">➤</button>
+                </div>
+            </div>
         </div>
     </div>
 
 <script>
 const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
-const ROOM_ID = 'pitbull-studio-v4';
+const ROOM_ID = 'pitbull-pro-v3-stable';
 const ICE_SERVERS = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] };
 
 // ═══════════════════════════════════════════════════════════════════
-// 🎛️ STUDIO PROCESSOR (WORKLET)
+// 🎯 БЕЗОПАСНЫЙ WORKLET КОД (ОТКЛЮЧЕН СПЕКТРАЛЬНЫЙ АНАЛИЗ)
 // ═══════════════════════════════════════════════════════════════════
 
 const WORKLET_CODE = `
-class StudioGateProcessor extends AudioWorkletProcessor {
+class NoiseGateProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
-        // НАСТРОЙКИ "ЗЛОГО" ГЕЙТА
-        this.openThreshold = -45;  // Голос должен быть громче этого, чтобы открыться
-        this.closeThreshold = -55; // Если тише этого - моментально закрываем
-        this.attack = 0.005;       // Скорость открытия (мгновенно)
-        this.release = 0.15;       // Скорость закрытия (плавно, чтобы не "съело" окончание слов)
-        
+        this.threshold = -60; // Более мягкий порог (было -50)
+        this.attackTime = 0.005;
+        this.releaseTime = 0.1; // Плавное затухание
         this.envelope = 0;
-        this.isOpen = false;
-        this.holdTimer = 0;
-        this.holdTime = 0.2; // Держать 200мс открытым после фразы
     }
 
     process(inputs, outputs, parameters) {
         const input = inputs[0];
         const output = outputs[0];
+        
         if (!input || !input[0] || !output) return true;
 
-        let isGateOpenCurrentFrame = false;
+        for (let channel = 0; channel < input.length; channel++) {
+            const inputChannel = input[channel];
+            const outputChannel = output[channel];
 
-        for (let i = 0; i < input[0].length; i++) {
-            const sample = input[0][i];
-            const power = Math.abs(sample);
-            const db = 20 * Math.log10(power + 1e-6);
+            for (let i = 0; i < inputChannel.length; i++) {
+                const sample = inputChannel[i];
+                const sampleDb = 20 * Math.log10(Math.abs(sample) + 1e-6);
 
-            // Логика ворот
-            if (this.isOpen) {
-                if (db < this.closeThreshold) {
-                    // Если стало тихо
-                    if (this.holdTimer > 0) {
-                        this.holdTimer -= 1 / sampleRate;
-                    } else {
-                        this.isOpen = false;
-                    }
+                // Если звук громче порога (голос) -> открываем gate
+                if (sampleDb > this.threshold) {
+                    this.envelope += (1 - this.envelope) * this.attackTime;
                 } else {
-                    // Если говорим - сбрасываем таймер удержания
-                    this.holdTimer = this.holdTime;
+                    // Если тише (клава) -> закрываем
+                    this.envelope += (0 - this.envelope) * this.releaseTime;
                 }
-            } else {
-                if (db > this.openThreshold) {
-                    this.isOpen = true;
-                    this.holdTimer = this.holdTime;
-                }
+
+                outputChannel[i] = sample * this.envelope;
             }
-
-            // Плавное открытие/закрытие громкости
-            const targetGain = this.isOpen ? 1.0 : 0.0;
-            const rate = this.isOpen ? this.attack : this.release;
-            this.envelope += (targetGain - this.envelope) * rate;
-
-            // Применяем громкость к сэмплу
-            output[0][i] = sample * this.envelope;
-            if(this.isOpen) isGateOpenCurrentFrame = true;
         }
-
-        // Отправляем состояние гейта в основной поток (для лампочки)
-        if (currentTime % 0.1 < 0.01) {
-            this.port.postMessage({isOpen: this.envelope > 0.1});
-        }
-        
         return true;
     }
 }
-registerProcessor('studio-gate', StudioGateProcessor);
+
+class VoiceCompressorProcessor extends AudioWorkletProcessor {
+    constructor() {
+        super();
+        this.threshold = 0.4;
+        this.ratio = 3;
+        this.envelope = 0;
+        this.attackTime = 0.003;
+        this.releaseTime = 0.25;
+    }
+
+    process(inputs, outputs, parameters) {
+        const input = inputs[0];
+        const output = outputs[0];
+        
+        if (!input || !input[0] || !output) return true;
+
+        for (let channel = 0; channel < input.length; channel++) {
+            const inputChannel = input[channel];
+            const outputChannel = output[channel];
+
+            for (let i = 0; i < inputChannel.length; i++) {
+                const sample = inputChannel[i];
+                const absLevel = Math.abs(sample);
+
+                if (absLevel > this.envelope) {
+                    this.envelope += (absLevel - this.envelope) * this.attackTime;
+                } else {
+                    this.envelope += (absLevel - this.envelope) * this.releaseTime;
+                }
+
+                let gain = 1.0;
+                if (this.envelope > this.threshold) {
+                    const excess = this.envelope - this.threshold;
+                    const compressed = excess / this.ratio;
+                    gain = (this.threshold + compressed) / (this.envelope + 1e-6);
+                }
+
+                outputChannel[i] = sample * gain;
+            }
+        }
+        return true;
+    }
+}
+
+registerProcessor('noise-gate-processor', NoiseGateProcessor);
+registerProcessor('voice-compressor', VoiceCompressorProcessor);
 `;
 
-const STUDIO_CONSTRAINTS = {
-    audio: {
-        echoCancellation: { ideal: true },
-        noiseSuppression: { ideal: true },
-        autoGainControl: { ideal: true },
-        googEchoCancellation: { ideal: true },
-        googNoiseSuppression: { ideal: true },
-        googHighpassFilter: { ideal: true },
-        channelCount: 1,
-        sampleRate: 48000
-    },
-    video: false
+const ULTRA_AUDIO_CONSTRAINTS = {
+    echoCancellation: { ideal: true },
+    autoGainControl: { ideal: true },
+    noiseSuppression: { ideal: true }, // Используем встроенный NS браузера как основу
+    googEchoCancellation: { ideal: true },
+    googAutoGainControl: { ideal: true },
+    googNoiseSuppression: { ideal: true },
+    googHighpassFilter: { ideal: true },
+    googTypingNoiseDetection: { ideal: true },
+    channelCount: { ideal: 1 },
+    sampleRate: { ideal: 48000 }
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// 🎤 ЦЕПОЧКА ОБРАБОТКИ (CHAIN)
+// 🎤 ПРИМЕНЕНИЕ ФИЛЬТРОВ
 // ═══════════════════════════════════════════════════════════════════
 
-async function setupStudioChain(stream) {
-    const ctx = new AudioContext({ sampleRate: 48000 });
-    await ctx.resume();
-
-    // Загружаем Worklet
-    const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
-    await ctx.audioWorklet.addModule(URL.createObjectURL(blob));
-
-    const source = ctx.createMediaStreamSource(stream);
-
-    // 1. HPF (High Pass Filter) - Режем низкий гул (кондиционер, кулеры)
-    const lowCut = ctx.createBiquadFilter();
-    lowCut.type = 'highpass';
-    lowCut.frequency.value = 110; 
-    lowCut.Q.value = 0.7;
-
-    // 2. LPF (Low Pass Filter) - Режем ультра-высокий шум
-    const highCut = ctx.createBiquadFilter();
-    highCut.type = 'lowpass';
-    highCut.frequency.value = 9000;
-
-    // 3. Notch - Вырезаем "цоканье" механики (обычно около 1.5кГц - 2кГц)
-    const notch = ctx.createBiquadFilter();
-    notch.type = 'peaking';
-    notch.frequency.value = 1800;
-    notch.Q.value = 1;
-    notch.gain.value = -3; // Чуть приглушаем
-
-    // 4. Presence - Делаем голос "четким"
-    const presence = ctx.createBiquadFilter();
-    presence.type = 'peaking';
-    presence.frequency.value = 4000;
-    presence.Q.value = 0.8;
-    presence.gain.value = 3; 
-
-    // 5. GATE - Наши "умные ворота"
-    const gate = new AudioWorkletNode(ctx, 'studio-gate');
-    
-    // Слушаем гейт для визуализации
-    gate.port.onmessage = (e) => {
-        const indicator = document.getElementById('my-gate-indicator');
-        if(indicator) {
-            if(e.data.isOpen) indicator.classList.add('open');
-            else indicator.classList.remove('open');
+async function applyUltraNoiseSuppressionPipeline(originalStream) {
+    try {
+        const audioContext = new AudioContext({ sampleRate: 48000 });
+        
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
         }
-    };
 
-    // 6. Compressor - Финальная полировка громкости
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -20;
-    comp.knee.value = 30;
-    comp.ratio.value = 12;
-    comp.release.value = 0.25;
+        const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
+        const workletUrl = URL.createObjectURL(blob);
+        
+        await audioContext.audioWorklet.addModule(workletUrl);
 
-    const dest = ctx.createMediaStreamDestination();
+        const source = audioContext.createMediaStreamSource(originalStream);
+        
+        // 1. Noise Gate (отсекает клавиатуру)
+        const noiseGate = new AudioWorkletNode(audioContext, 'noise-gate-processor');
+        
+        // 2. Highpass (убирает гул)
+        const highpass = audioContext.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = 85; 
+        highpass.Q.value = 0.5;
+        
+        // 3. Compressor Worklet (выравнивает голос)
+        const compressor = new AudioWorkletNode(audioContext, 'voice-compressor');
+        
+        // 4. Limiter (защита ушей)
+        const limiter = audioContext.createDynamicsCompressor();
+        limiter.threshold.value = -2;
+        limiter.ratio.value = 15;
+        limiter.attack.value = 0.005;
+        limiter.release.value = 0.05;
 
-    // Соединяем
-    source
-        .connect(lowCut)
-        .connect(highCut)
-        .connect(notch)
-        .connect(gate)      // Гейт стоит тут
-        .connect(presence)
-        .connect(comp)
-        .connect(dest);
+        const destination = audioContext.createMediaStreamDestination();
 
-    return dest.stream;
+        source
+            .connect(highpass)      // Сначала фильтр частот
+            .connect(noiseGate)     // Потом гейт (чтобы не открывался от гула)
+            .connect(compressor)    // Потом компрессор
+            .connect(limiter)       // В конце лимитер
+            .connect(destination);
+
+        console.log('✅ CLEAN AUDIO ACTIVATED');
+        return destination.stream;
+        
+    } catch (error) {
+        console.warn('⚠️ Fallback to basic audio:', error);
+        return originalStream; 
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 🚀 MAIN APP
+// 🎵 ЗВУКОВЫЕ ЭФФЕКТЫ
+// ═══════════════════════════════════════════════════════════════════
+
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+function playJoinSound() {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.frequency.value = 800; 
+    gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    osc.start(audioContext.currentTime);
+    osc.stop(audioContext.currentTime + 0.3);
+}
+
+function playLeaveSound() {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.frequency.value = 300; 
+    gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+    osc.start(audioContext.currentTime);
+    osc.stop(audioContext.currentTime + 0.4);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 🚀 APP
 // ═══════════════════════════════════════════════════════════════════
 
 class App {
     constructor() {
         this.client = null;
-        this.peers = {};
-        this.users = {};
-        this.myId = 'u_' + Math.random().toString(36).substr(2, 6);
-        this.myStream = null;
-        this.myName = '';
+        this.peers = {}; 
+        this.users = {}; 
+        this.lastSeen = {}; 
+        this.audioElements = {};
+        
+        let savedId = localStorage.getItem('dc_uid');
+        if (!savedId) {
+            savedId = 'u_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem('dc_uid', savedId);
+        }
+        this.myId = savedId;
+
+        this.myProfile = { name: '', avatar: '' };
+        this.audioCtx = null;
+        this.chatHistory = [];
+        this.localAudioStream = null;
+        this.localVideoStream = null;
+        this.isMuted = false;
+        this.isScreenOn = false;
+        
+        setInterval(() => this.cleanupGhosts(), 3000);
+    }
+
+    init() {
+        const savedName = localStorage.getItem('dc_name');
+        const savedAva = localStorage.getItem('dc_ava');
+        this.myProfile.avatar = savedAva || 'https://cdn.discordapp.com/embed/avatars/0.png';
+        document.getElementById('avatar-preview').style.backgroundImage = `url(${this.myProfile.avatar})`;
+        if(savedName) document.getElementById('username-in').value = savedName;
+
+        document.getElementById('avatar-file').addEventListener('change', e => {
+            const f = e.target.files[0];
+            if(f) {
+                const r = new FileReader();
+                r.onload = ev => {
+                    this.myProfile.avatar = ev.target.result;
+                    document.getElementById('avatar-preview').style.backgroundImage = `url(${ev.target.result})`;
+                }
+                r.readAsDataURL(f);
+            }
+        });
+        document.getElementById('msg-in').addEventListener('keydown', e => { if(e.key==='Enter') this.sendText(); });
+        
+        window.addEventListener('beforeunload', () => this.sendLeaveSignal());
+
+        if(localStorage.getItem('dc_session') === 'true' && savedName) {
+            this.myProfile.name = savedName;
+            this.enterApp();
+        }
     }
 
     async join() {
-        this.myName = document.getElementById('username-in').value || 'User';
+        const name = document.getElementById('username-in').value.trim();
+        if(!name) return alert('Имя обязательно!');
+        this.myProfile.name = name;
+        localStorage.setItem('dc_name', name);
+        localStorage.setItem('dc_ava', this.myProfile.avatar);
+        localStorage.setItem('dc_session', 'true');
+        this.enterApp();
+    }
+
+    async enterApp() {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-layout').classList.remove('hidden');
 
         try {
-            const rawStream = await navigator.mediaDevices.getUserMedia(STUDIO_CONSTRAINTS);
-            this.myStream = await setupStudioChain(rawStream); // Включаем "Студию"
-            this.renderMyCard();
-            this.connectMQTT();
-        } catch(e) {
-            alert('Ошибка микрофона! ' + e.message);
+            console.log('🎤 Requesting mic...');
+            const rawStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: ULTRA_AUDIO_CONSTRAINTS,
+                video: false
+            });
+            
+            console.log('✅ Mic OK. Applying Filters...');
+            this.localAudioStream = await applyUltraNoiseSuppressionPipeline(rawStream);
+            
+            this.setupVAD(this.localAudioStream, this.myId);
+        } catch(e) { 
+            console.error("❌ Mic Error:", e); 
+            alert("Ошибка микрофона! Проверьте разрешения.");
         }
-        
-        document.getElementById('msg-in').addEventListener('keydown', e => { if(e.key==='Enter') this.sendMsg(); });
+
+        this.connectMQTT();
+        this.updateGrid();
+        this.loadChatHistory();
     }
 
-    renderMyCard() {
-        const grid = document.getElementById('grid-users');
-        const div = document.createElement('div');
-        div.className = 'voice-card';
-        div.id = 'my-card';
-        div.innerHTML = `
-            <div class="gate-label">NOISE GATE</div>
-            <div id="my-gate-indicator" class="gate-status"></div>
-            <div class="card-avatar" style="background-image: url('https://cdn.discordapp.com/embed/avatars/0.png')"></div>
-            <div class="card-name">${this.myName} (Вы)</div>
-        `;
-        grid.appendChild(div);
-    }
-
-    renderRemoteCard(uid, name) {
-        if(document.getElementById('u-'+uid)) return;
-        const grid = document.getElementById('grid-users');
-        const div = document.createElement('div');
-        div.className = 'voice-card';
-        div.id = 'u-'+uid;
-        div.innerHTML = `
-            <div class="card-avatar" style="background-image: url('https://cdn.discordapp.com/embed/avatars/1.png')"></div>
-            <div class="card-name">${name}</div>
-        `;
-        grid.appendChild(div);
+    logout() {
+        this.sendLeaveSignal();
+        localStorage.removeItem('dc_session');
+        setTimeout(() => location.reload(), 100);
     }
 
     connectMQTT() {
-        this.client = mqtt.connect(MQTT_BROKER, { clientId: this.myId });
+        this.client = mqtt.connect(MQTT_BROKER, { keepalive: 10, clean: true, clientId: this.myId });
+        
         this.client.on('connect', () => {
-            this.client.subscribe(ROOM_ID + '/#');
-            this.announce();
-            setInterval(() => this.announce(), 3000);
+            this.client.subscribe(`${ROOM_ID}/presence`);
+            this.client.subscribe(`${ROOM_ID}/chat`);
+            this.client.subscribe(`${ROOM_ID}/signal/${this.myId}`);
+            
+            this.announce('online');
+            this.announceInterval = setInterval(() => this.announce('online'), 4000);
         });
+
         this.client.on('message', (topic, msg) => {
-            const d = JSON.parse(msg.toString());
-            if(d.id === this.myId) return;
+            try {
+                const d = JSON.parse(msg.toString());
+                if(topic.includes('presence')) this.handlePresence(d);
+                else if(topic.includes('chat')) this.handleIncomingChat(d);
+                else this.handleSignal(d);
+            } catch(e) { console.error(e); }
+        });
+    }
 
-            if(topic.includes('presence')) {
-                this.users[d.id] = d.name;
-                this.renderRemoteCard(d.id, d.name);
-                if(!this.peers[d.id] && this.myId > d.id) this.call(d.id);
-            }
-            else if(topic.includes('signal')) {
-                if(d.target === this.myId) this.handleSignal(d);
-            }
-            else if(topic.includes('chat')) {
-                this.addMsg(d.name, d.text);
+    sendLeaveSignal() {
+        if(this.client && this.client.connected) {
+            this.client.publish(`${ROOM_ID}/presence`, JSON.stringify({
+                id: this.myId,
+                status: 'offline'
+            }));
+        }
+    }
+
+    announce(status = 'online') {
+        if(!this.client || !this.client.connected) return;
+        this.client.publish(`${ROOM_ID}/presence`, JSON.stringify({
+            id: this.myId,
+            user: this.myProfile,
+            isMuted: this.isMuted,
+            status: status
+        }));
+    }
+
+    handlePresence(data) {
+        if(data.id === this.myId) return;
+        
+        if (data.status === 'offline') {
+            this.removeRemoteUser(data.id);
+            return;
+        }
+
+        this.lastSeen[data.id] = Date.now();
+        
+        const isNewUser = !this.users[data.id];
+        
+        if(isNewUser) {
+            this.users[data.id] = data.user;
+            playJoinSound(); 
+            this.updateGrid();
+            if(this.myId > data.id) this.createPeer(data.id, true);
+        }
+    }
+
+    cleanupGhosts() {
+        const now = Date.now();
+        const TIMEOUT = 10000;
+
+        Object.keys(this.users).forEach(uid => {
+            if (!this.lastSeen[uid] || (now - this.lastSeen[uid] > TIMEOUT)) {
+                console.log(`User ${uid} timed out`);
+                this.removeRemoteUser(uid);
             }
         });
     }
 
-    announce() {
-        this.client.publish(ROOM_ID + '/presence', JSON.stringify({ id: this.myId, name: this.myName }));
+    removeRemoteUser(uid) {
+        if(!this.users[uid]) return;
+        
+        delete this.users[uid];
+        delete this.lastSeen[uid];
+
+        if(this.peers[uid]) {
+            this.peers[uid].close();
+            delete this.peers[uid];
+        }
+        if(this.audioElements[uid]) {
+            this.audioElements[uid].remove();
+            delete this.audioElements[uid];
+        }
+
+        const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+        if(card) {
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.8)';
+            setTimeout(() => card.remove(), 300);
+        }
+        
+        playLeaveSound();
     }
 
-    // WebRTC Logic
-    call(targetId) {
+    createPeer(targetId, initiator) {
+        if(this.peers[targetId]) return;
         const pc = new RTCPeerConnection(ICE_SERVERS);
         this.peers[targetId] = pc;
-        this.myStream.getTracks().forEach(t => pc.addTrack(t, this.myStream));
-        
+
+        if(this.localAudioStream) {
+            this.localAudioStream.getTracks().forEach(t => pc.addTrack(t, this.localAudioStream));
+        }
+        if(this.localVideoStream) {
+            this.localVideoStream.getTracks().forEach(t => pc.addTrack(t, this.localVideoStream));
+        }
+
         pc.onicecandidate = e => {
-            if(e.candidate) this.sig(targetId, 'candidate', e.candidate);
+            if(e.candidate) this.sendSig(targetId, { type: 'candidate', candidate: e.candidate });
         };
+
         pc.ontrack = e => {
-            const aud = new Audio();
-            aud.srcObject = e.streams[0];
-            aud.autoplay = true;
-            document.body.appendChild(aud); // Важно для воспроизведения
-            
-            // Визуализация "говорения" для удаленного юзера
-            const ctx = new AudioContext();
-            const src = ctx.createMediaStreamSource(e.streams[0]);
-            const anl = ctx.createAnalyser();
-            src.connect(anl);
-            const data = new Uint8Array(anl.frequencyBinCount);
-            const check = () => {
-                anl.getByteFrequencyData(data);
-                const vol = data.reduce((a,b)=>a+b)/data.length;
-                const card = document.getElementById('u-'+targetId);
-                if(card) {
-                    if(vol > 10) card.classList.add('speaking');
-                    else card.classList.remove('speaking');
+            const stream = e.streams[0];
+            if(e.track.kind === 'audio') {
+                const aud = new Audio();
+                aud.srcObject = stream;
+                
+                // FIX: Chrome autoplay policy handling
+                const playPromise = aud.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log('Autoplay prevented. Waiting for interaction.');
+                        // Обычно взаимодействие уже есть, но на всякий случай
+                    });
                 }
-                requestAnimationFrame(check);
-            };
-            check();
+                
+                document.body.appendChild(aud);
+                this.audioElements[targetId] = aud; 
+                this.setupVAD(stream, targetId);
+            } 
+            else if(e.track.kind === 'video') {
+                this.attachVideoToCard(targetId, stream);
+            }
         };
 
-        pc.createOffer().then(o => pc.setLocalDescription(o)).then(() => {
-            this.sig(targetId, 'sdp', pc.localDescription);
-        });
-    }
-
-    async handleSignal(d) {
-        let pc = this.peers[d.sender];
-        if(!pc) {
-            pc = new RTCPeerConnection(ICE_SERVERS);
-            this.peers[d.sender] = pc;
-            this.myStream.getTracks().forEach(t => pc.addTrack(t, this.myStream));
-            pc.onicecandidate = e => { if(e.candidate) this.sig(d.sender, 'candidate', e.candidate); };
-            pc.ontrack = e => {
-                const aud = new Audio();
-                aud.srcObject = e.streams[0];
-                aud.autoplay = true;
-                document.body.appendChild(aud);
-            };
-        }
-
-        if(d.type === 'sdp') {
-            await pc.setRemoteDescription(new RTCSessionDescription(d.data));
-            if(d.data.type === 'offer') {
-                const ans = await pc.createAnswer();
-                await pc.setLocalDescription(ans);
-                this.sig(d.sender, 'sdp', ans);
+        pc.oniceconnectionstatechange = () => {
+            if(pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                this.removeRemoteUser(targetId);
             }
-        } else if(d.type === 'candidate') {
-            await pc.addIceCandidate(new RTCIceCandidate(d.data));
+        }
+
+        if(initiator) {
+            this.renegotiate(targetId);
         }
     }
 
-    sig(target, type, data) {
-        this.client.publish(ROOM_ID + '/signal', JSON.stringify({ sender: this.myId, target, type, data }));
+    async renegotiate(targetId) {
+        const pc = this.peers[targetId];
+        if(!pc) return;
+        try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            this.sendSig(targetId, { type: 'sdp', sdp: pc.localDescription });
+        } catch(e) { console.error(e); }
+    }
+
+    async handleSignal(data) {
+        const { senderId, payload } = data;
+        if(!this.peers[senderId]) this.createPeer(senderId, false);
+        const pc = this.peers[senderId];
+
+        try {
+            if(payload.type === 'sdp') {
+                if(pc.signalingState !== "stable" && payload.sdp.type === "offer") {
+                     await Promise.all([
+                        pc.setLocalDescription({type: "rollback"}),
+                        pc.setRemoteDescription(payload.sdp)
+                     ]);
+                } else {
+                    await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                }
+                
+                if(payload.sdp.type === 'offer') {
+                    const ans = await pc.createAnswer();
+                    await pc.setLocalDescription(ans);
+                    this.sendSig(senderId, {type:'sdp', sdp:ans});
+                }
+            } else if(payload.type === 'candidate') {
+                await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            }
+        } catch(e) { console.warn("Signal error", e); }
+    }
+
+    sendSig(target, payload) {
+        this.client.publish(`${ROOM_ID}/signal/${target}`, JSON.stringify({ senderId: this.myId, payload }));
     }
 
     toggleMic() {
-        const track = this.myStream.getAudioTracks()[0];
-        track.enabled = !track.enabled;
-        document.getElementById('btn-mic').classList.toggle('active');
-        document.getElementById('btn-mic').textContent = track.enabled ? '🎤' : '🔇';
+        if(!this.localAudioStream) return;
+        this.isMuted = !this.isMuted;
+        this.localAudioStream.getAudioTracks()[0].enabled = !this.isMuted;
+        
+        const btn = document.getElementById('btn-mic');
+        btn.classList.toggle('active', !this.isMuted);
+        btn.classList.toggle('muted', this.isMuted);
+        this.announce();
     }
 
-    logout() { location.reload(); }
+    async toggleScreen() {
+        const btn = document.getElementById('btn-screen');
+        if(this.isScreenOn) {
+            this.stopVideo();
+            this.isScreenOn = false;
+            btn.classList.remove('on');
+        } else {
+            try {
+                this.localVideoStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                this.isScreenOn = true;
+                btn.classList.add('on');
+                
+                this.localVideoStream.getVideoTracks()[0].onended = () => this.toggleScreen();
+                this.broadcastVideo();
+            } catch(e) { console.log("Screen cancelled"); }
+        }
+    }
 
-    sendMsg() {
+    stopVideo() {
+        if(this.localVideoStream) {
+            this.localVideoStream.getTracks().forEach(t => t.stop());
+            this.localVideoStream = null;
+        }
+        this.hideLocalVideo();
+        Object.keys(this.peers).forEach(pid => {
+            const pc = this.peers[pid];
+            const senders = pc.getSenders();
+            const vidSender = senders.find(s => s.track && s.track.kind === 'video');
+            if(vidSender) pc.removeTrack(vidSender);
+            this.renegotiate(pid);
+        });
+    }
+
+    broadcastVideo() {
+        this.showLocalVideo();
+        const track = this.localVideoStream.getVideoTracks()[0];
+        
+        Object.keys(this.peers).forEach(pid => {
+            const pc = this.peers[pid];
+            const senders = pc.getSenders();
+            const vidSender = senders.find(s => s.track && s.track.kind === 'video');
+            
+            if(vidSender) {
+                vidSender.replaceTrack(track);
+            } else {
+                pc.addTrack(track, this.localVideoStream);
+                this.renegotiate(pid);
+            }
+        });
+    }
+
+    showLocalVideo() {
+        this.attachVideoToCard(this.myId, this.localVideoStream, true);
+    }
+    
+    hideLocalVideo() {
+        const card = document.querySelector(`.voice-card[data-uid="${this.myId}"]`);
+        if(card) {
+            card.classList.remove('has-video');
+            const vid = card.querySelector('video');
+            if(vid) vid.srcObject = null;
+        }
+    }
+
+    attachVideoToCard(uid, stream, isMuted=false) {
+        setTimeout(() => {
+            const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+            if(!card) return;
+            
+            let vid = card.querySelector('video');
+            if(!vid) {
+                vid = document.createElement('video');
+                vid.className = 'card-video';
+                vid.autoplay = true;
+                vid.playsInline = true;
+                card.prepend(vid);
+            }
+            
+            vid.srcObject = stream;
+            vid.muted = true;
+            card.classList.add('has-video');
+        }, 100);
+    }
+    
+    setVolume(uid, value) {
+        if(this.audioElements[uid]) {
+            this.audioElements[uid].volume = value / 100;
+        }
+    }
+
+    toggleZoom(uid) {
+        const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+        if(!card) return;
+        
+        const already = document.querySelector('.voice-card.expanded');
+        if(already && already !== card) already.classList.remove('expanded');
+
+        card.classList.toggle('expanded');
+    }
+
+    updateGrid() {
+        const grid = document.getElementById('grid-users');
+        if(!document.querySelector(`.voice-card[data-uid="${this.myId}"]`)) {
+             this.renderCard(grid, this.myId, this.myProfile, true);
+        }
+
+        Object.keys(this.users).forEach(uid => {
+            if(!document.querySelector(`.voice-card[data-uid="${uid}"]`)) {
+                this.renderCard(grid, uid, this.users[uid], false);
+            }
+        });
+        applyGradients();
+    }
+
+    renderCard(container, uid, profile, isMe) {
+        const el = document.createElement('div');
+        el.className = 'voice-card';
+        el.setAttribute('data-uid', uid);
+        el.onclick = (e) => {
+            if(e.target.closest('.close-zoom-btn') || e.target.closest('.volume-control')) return;
+            this.toggleZoom(uid);
+        };
+
+        const volumeHTML = !isMe ? `
+            <div class="volume-control">
+                <span class="volume-icon">🔊</span>
+                <input type="range" class="volume-slider" min="0" max="200" value="100" 
+                       oninput="app.setVolume('${uid}', this.value)" onclick="event.stopPropagation()">
+            </div>
+        ` : '';
+
+        el.innerHTML = `
+            <div class="expand-hint">+</div>
+            <button class="close-zoom-btn" onclick="event.stopPropagation(); app.toggleZoom('${uid}')">✕</button>
+            ${volumeHTML}
+            <video class="card-video" autoplay playsinline muted></video>
+            <div class="card-avatar" style="background-image: url('${profile.avatar}')"></div>
+            <div class="card-name">${profile.name} ${isMe ? '(Вы)' : ''}</div>
+        `;
+        container.appendChild(el);
+    }
+
+    loadChatHistory() {
+        const saved = localStorage.getItem('dc_chat_history');
+        if(saved) {
+            this.chatHistory = JSON.parse(saved);
+            this.chatHistory.forEach(msg => this.renderChat(msg, false));
+        }
+    }
+    
+    saveChatHistory() {
+        if(this.chatHistory.length > 100) this.chatHistory = this.chatHistory.slice(-100);
+        localStorage.setItem('dc_chat_history', JSON.stringify(this.chatHistory));
+    }
+
+    sendText() {
         const inp = document.getElementById('msg-in');
-        if(!inp.value) return;
-        this.client.publish(ROOM_ID + '/chat', JSON.stringify({ name: this.myName, text: inp.value }));
+        const txt = inp.value.trim();
+        if(!txt) return;
+        const payload = { 
+            name: this.myProfile.name, avatar: this.myProfile.avatar, 
+            text: txt, time: new Date().toLocaleTimeString().slice(0,5)
+        };
+        this.client.publish(`${ROOM_ID}/chat`, JSON.stringify(payload));
         inp.value = '';
     }
 
-    addMsg(name, text) {
+    handleIncomingChat(data) {
+        this.chatHistory.push(data);
+        this.saveChatHistory();
+        this.renderChat(data, false);
+    }
+
+    renderChat(d) {
+        const list = document.getElementById('messages');
         const div = document.createElement('div');
         div.className = 'msg';
-        div.innerHTML = `<b>${name}:</b> ${text}`;
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = 99999;
+        div.innerHTML = `
+            <div class="msg-ava" style="background-image: url('${d.avatar}')"></div>
+            <div class="msg-body">
+                <div class="msg-top"><span class="msg-user">${d.name}</span><span class="msg-time">${d.time}</span></div>
+                <div class="msg-text">${d.text.replace(/</g, "&lt;")}</div>
+            </div>
+        `;
+        list.appendChild(div);
+        list.scrollTop = list.scrollHeight;
+    }
+
+    setupVAD(stream, uid) {
+        if(!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if(this.audioCtx.state==='suspended') this.audioCtx.resume();
+        const src = this.audioCtx.createMediaStreamSource(stream);
+        const anl = this.audioCtx.createAnalyser();
+        anl.fftSize = 128;
+        src.connect(anl);
+        const data = new Uint8Array(anl.frequencyBinCount);
+        const loop = () => {
+            anl.getByteFrequencyData(data);
+            let sum = 0; for(let i=0; i<data.length; i++) sum+=data[i];
+            const avg = sum/data.length;
+            const card = document.querySelector(`.voice-card[data-uid="${uid}"]`);
+            if(card) {
+                if(avg > 12) card.classList.add('speaking');
+                else card.classList.remove('speaking');
+            }
+            requestAnimationFrame(loop);
+        };
+        loop();
     }
 }
 
 const app = new App();
+app.init();
+
+function applyGradients() {
+  const cards = document.querySelectorAll('.voice-card');
+  const gradients = [
+    'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%)',
+    'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+    'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)',
+    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+  ];
+  cards.forEach(card => {
+    if(!card.style.getPropertyValue('--user-gradient')) {
+        card.style.setProperty('--user-gradient', gradients[Math.floor(Math.random() * gradients.length)]);
+    }
+  });
+}
+const observer = new MutationObserver(applyGradients);
+if(document.getElementById('grid-users')) observer.observe(document.getElementById('grid-users'), { childList: true });
 </script>
 </body>
 </html>
